@@ -2,15 +2,14 @@
 
 Return the top 10 most discussed news items for {country}.
 
-## Getting Started
+## How does it work?
 
-This project is a starting point for a Flutter application.
+A query that runs every hour, for every country:
 
-A few resources to get you started if this is your first Flutter project:
+"What are the top 10 discussed news items for [Country]? Return a file for each that can be displayed on a web page. Make sure to include footers with links to sources."
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+There will be a drop down menu to choose which country, and the ability to translate the web page into any language.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## How does it make money?
+
+Advertising.
