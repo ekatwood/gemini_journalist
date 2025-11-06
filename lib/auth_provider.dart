@@ -1,9 +1,7 @@
-// auth_provider.dart (Modified for Gemini Journalist)
+// auth_provider.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-// Importing dart:html conditionally, as it's web-only
 import 'dart:html' as html show document;
-// import 'firestore_functions.dart'; // No longer needed here
 
 class AuthProvider extends ChangeNotifier {
   // State variables for the Gemini Journalist app
@@ -22,12 +20,6 @@ class AuthProvider extends ChangeNotifier {
   String get selectedLanguageCode => _selectedLanguageCode;
   ThemeMode get themeMode => _themeMode;
   DateTime? get lastFetchTime => _lastFetchTime;
-
-  // Login/Wallet getters (kept for model completeness)
-  bool get isLoggedIn => _isLoggedIn;
-  String get walletAddress => _walletAddress;
-  String get walletProvider => _walletProvider;
-
 
   AuthProvider() {
     _loadThemePreference();
@@ -95,7 +87,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-
   // --- Preference Loaders ---
   void _loadThemePreference() {
     final String? themeValue = _getCookie('themePreference');
@@ -145,7 +136,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-
   // --- Public Preference Setters/Togglers ---
   void toggleThemeMode() {
     _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
@@ -187,24 +177,5 @@ class AuthProvider extends ChangeNotifier {
 
   String? getCachedNewsData() {
     return _getCookie('cachedNews');
-  }
-
-  // --- Login/Wallet Functions (Kept from model) ---
-
-  // NOTE: The original `_isSolana` logic was removed as it's not relevant to this app.
-  // The login/logout functions were kept to complete the model.
-
-  Future<void> login(String walletAddress, String blockchainNetwork) async {
-    _isLoggedIn = true;
-    _walletAddress = walletAddress;
-    _walletProvider = blockchainNetwork;
-    notifyListeners();
-  }
-
-  void logout() {
-    _isLoggedIn = false;
-    _walletAddress = '';
-    _walletProvider = '';
-    notifyListeners();
   }
 }

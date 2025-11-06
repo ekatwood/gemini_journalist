@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // To open source links
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'dart:convert'; // For JSON encoding/decoding
-
-// Your custom files
 import 'firestore_functions.dart';
 import 'auth_provider.dart';
 
@@ -218,6 +216,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
                       (String? newValue) {
                     if (newValue != null) {
                       authProvider.setLanguagePreference(newValue);
+                      // TODO: just do a _translateText() function
                       _fetchNews(); // Re-fetch data on preference change
                     }
                   },

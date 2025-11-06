@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class NewsItem {
   final String title;
   final String summary;
+  // TODO: make a touple List, (title, url)
   final List<String> sources; // List of source URLs/text
 
   NewsItem({
