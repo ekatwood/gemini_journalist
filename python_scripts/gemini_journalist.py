@@ -3,98 +3,92 @@ import json
 import time
 from datetime import datetime
 
+# Import for the Google GenAI SDK and types
+from google import genai
+from google.genai import types
+
+# Import for Firebase/Firestore
+import firebase_admin
+from firebase_admin import credentials, firestore
+from firebase_admin.firestore import Query
+
 # --- CONFIGURATION (Replace with your actual settings) ---
-# NOTE: In a secure Google Cloud environment (e.g., Cloud Functions, Run),
-# you typically don't hardcode an API key. You would use Application Default Credentials (ADC)
-# or a service account for both Gemini and Firestore.
-#
-# For testing locally with the API, you can place your key here:
-GEMINI_API_KEY = ""
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
-FIREBASE_PROJECT_ID = "your-firebase-project-id" # e.g., "my-news-app-12345"
+# NOTE: The client handles the API key, typically from the GEMINI_API_KEY env var,
+# or you can pass it to the client initialization.
+GEMINI_API_KEY = "x" # No longer needed directly for client
+FIREBASE_PROJECT_ID = "gemini-journalist-8c449"
 
 # --- FIREBASE / GOOGLE CLOUD AUTH SETUP ---
-# In a real Python Google Cloud environment, you would use the Firebase Admin SDK.
-# For demonstration, we'll mock the Firestore client setup.
-# You would need to install: pip install firebase-admin
-# from firebase_admin import credentials, initialize_app, firestore
 
-# cred = credentials.ApplicationDefault()
-# initialize_app(cred, {'projectId': FIREBASE_PROJECT_ID})
-# db = firestore.client()
+try:
+    cred = credentials.Certificate("x.json")
+    firebase_admin.initialize_app(cred)
+except Exception as e:
+    print("Error connecting to Firebase: " + e)
 
-# Placeholder class for Firestore interaction (Replace with actual Firebase Admin SDK code)
-class FirestoreClientMock:
-    def collection(self, collection_path):
-        print(f"--- MOCK: Preparing to access collection: {collection_path} ---")
-        return self
+db = firestore.client()
 
-    def add(self, data):
-        timestamp = datetime.now().isoformat()
-        doc_id = f"news-item-{timestamp}"
-        print(f"\n--- MOCK: SAVING DOCUMENT to Firestore ---")
-        print(f"Collection: news_summaries")
-        print(f"Document ID: {doc_id}")
-        print(f"Data Payload:\n{json.dumps(data, indent=2)}")
-        print("--- END MOCK SAVE ---\n")
-        return doc_id
-
-db = FirestoreClientMock()
+# Initialize the Gemini Client
+# It will automatically look for the GEMINI_API_KEY environment variable.
+try:
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    print("Gemini Client initialized successfully.")
+except Exception as e:
+    print(f"ERROR: Failed to initialize Gemini Client. Ensure your API key is set as an environment variable (GEMINI_API_KEY). {e}")
+    # Create a mock client if initialization fails
+    class GeminiClientMock:
+        def models(self): return self
+        def generate_content(self, model, contents, config):
+            print("\n--- MOCK: Gemini API call failed. Returning dummy data. ---")
+            return types.GenerateContentResponse(
+                text='[{"title": "Mock News Title", "summary": "This is a mock summary.", "sources": [{"link_title": "Mock Source", "url": "http://mock.com"}]}]',
+                candidates=[types.Candidate(content=types.Content(parts=[types.Part(text='[{"title": "Mock News Title", "summary": "This is a mock summary.", "sources": [{"link_title": "Mock Source", "url": "http://mock.com"}]}]')]))]
+            )
+    gemini_client = GeminiClientMock()
 
 # --- JSON Response Schema Definition (For Structured Output) ---
-# This schema defines the exact structure the model MUST return.
-NEWS_SCHEMA = {
-    "type": "ARRAY",
-    "description": "An array of up to 10 key news items.",
-    "items": {
-        "type": "OBJECT",
-        "properties": {
-            "title": { "type": "STRING", "description": "The main headline of the news item." },
-            "summary": { "type": "STRING", "description": "A concise summary of the news item, suitable for display on a web page." },
-            "sources": {
-                "type": "ARRAY",
-                "description": "An array of web sources/citations used to generate the summary.",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "link_title": { "type": "STRING", "description": "The title of the source link." },
-                        "url": { "type": "STRING", "description": "The full URL of the source." }
+# The google-genai SDK requires the schema to be defined using SDK types
+# For simplicity, we use the raw JSON schema but this should ideally be
+# built using types.Schema for the SDK. The SDK can often infer from the
+# Python types, but for complex structures, we'll keep the string definition
+# and adapt the config usage.
+
+# Converting the previous JSON schema definition into a types.Schema object
+NEWS_SCHEMA = types.Schema(
+    type=types.Type.ARRAY,
+    description="An array of up to 10 key news items.",
+    items=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "title": types.Schema(type=types.Type.STRING, description="The main headline of the news item."),
+            "summary": types.Schema(type=types.Type.STRING, description="A concise summary of the news item, suitable for display on a web page."),
+            "sources": types.Schema(
+                type=types.Type.ARRAY,
+                description="An array of web sources/citations used to generate the summary.",
+                items=types.Schema(
+                    type=types.Type.OBJECT,
+                    properties={
+                        "link_title": types.Schema(type=types.Type.STRING, description="The title of the source link."),
+                        "url": types.Schema(type=types.Type.STRING, description="The full URL of the source.")
                     },
-                    "required": ["link_title", "url"]
-                }
-            }
+                    required=["link_title", "url"]
+                )
+            )
         },
-        "required": ["title", "summary", "sources"]
-    }
-}
+        required=["title", "summary", "sources"]
+    )
+)
 
 
 def fetch_and_store_news(country: str, languages: list):
     """
     Fetches the top 10 discussed news items for a country in specified languages
-    using the Gemini API with Google Search grounding, and saves the structured
+    using the Gemini SDK with Google Search grounding, and saves the structured
     results to Firestore.
-
-    :param country: The country to query news for (e.g., "France").
-    :param languages: A list of languages for the response (e.g., ["English", "French"]).
     """
-    if not GEMINI_API_KEY:
-        print("ERROR: GEMINI_API_KEY is not set. Cannot proceed with API calls.")
-        return
 
+    # 1. Define the core user query
     user_query = f"What are the top 10 most discussed news items right now for {country}? For each item, provide a concise summary. The summary MUST include links to at least one primary source in the required 'sources' array field."
-
-    # Base configuration for the structured API call
-    base_payload = {
-        "contents": [{ "parts": [{ "text": user_query }] }],
-        # Enable Google Search grounding
-        "tools": [{ "google_search": {} }],
-        "config": {
-            # Request JSON output
-            "responseMimeType": "application/json",
-            "responseSchema": NEWS_SCHEMA
-        },
-    }
 
     results = {}
 
@@ -103,46 +97,51 @@ def fetch_and_store_news(country: str, languages: list):
         print(f"QUERYING NEWS for '{country}' in language: {lang}")
         print(f"========================================================")
 
-        # 1. Update system instruction to ensure response is in the target language
+        # 2. Define the System Instruction for the current language
         system_instruction = (
-            f"You are a helpful news curator. Your task is to provide the requested information "
-            f"strictly in the requested JSON format and ensure all output text is in the {lang} language. "
-            f"Ensure to find authoritative and up-to-date sources for all summaries and include them in the 'sources' array."
+            f"You are a helpful news curator. Your task is to provide the requested information. "
+            f"**Your entire response MUST be a single JSON array (with fields title, summary, and sources(link_title, url)) wrapped in ```json ... ``` code fences.** "
+            f"Ensure all output text is in the {lang} language. "
+            f"Use the search tool to find authoritative and up-to-date sources and include them in the 'sources' array."
         )
 
-        payload = base_payload.copy()
-        payload["config"]["systemInstruction"] = system_instruction
+        # 3. Create the GenerateContentConfig object
+        config = types.GenerateContentConfig(
+            # Pass the System Instruction here
+            system_instruction=system_instruction,
+
+            # Enable Google Search grounding
+            tools=[{"googleSearch": {}}],
+
+            # Request JSON output
+            #response_mime_type="application/json",
+
+            # Pass the structured schema
+            #response_schema=NEWS_SCHEMA
+        )
 
         try:
-            # 2. Execute the API Call with exponential backoff for robustness
-            max_retries = 5
-            for attempt in range(max_retries):
-                response = requests.post(
-                    f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
-                    headers={"Content-Type": "application/json"},
-                    data=json.dumps(payload),
-                    timeout=30 # Set a reasonable timeout
-                )
+            # 4. Execute the API Call using the SDK
+            # The SDK handles retries automatically up to a point.
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=user_query,
+                config=config,
+            )
 
-                if response.status_code == 200:
-                    break
-                elif response.status_code == 429 and attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    print(f"Rate limit hit (429). Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
-                else:
-                    response.raise_for_status()
+            # 5. Process the response
+            # response.text will contain the JSON block wrapped in markdown fences
+            raw_text = response.text
 
-            # 3. Process the response
-            response_data = response.json()
+            # Extract the raw JSON string by stripping the markdown code fences
+            if raw_text.startswith('```json'):
+                json_text = raw_text.strip().replace('```json\n', '').replace('\n```', '')
+            else:
+                json_text = raw_text.strip() # Fallback for a clean output
 
-            # Extract the raw JSON string from the model's response part
-            json_text = response_data['candidates'][0]['content']['parts'][0]['text']
-
-            # Parse the JSON string into a Python object
             news_items = json.loads(json_text)
 
-            # 4. Prepare data for Firestore
+            # 6. Prepare data for Firestore
             firestore_data = {
                 "country": country,
                 "language": lang,
@@ -150,18 +149,15 @@ def fetch_and_store_news(country: str, languages: list):
                 "news_data": news_items
             }
 
-            # 5. Save to Firestore
-            # The actual path should be defined according to your security rules
-            # We are using a simple collection name here.
-            doc_id = db.collection("news_summaries").add(firestore_data)
+            # 7. Save to Firestore
+            doc_ref = db.collection("news_summaries").add(firestore_data)
+            doc_id = doc_ref[1].id if isinstance(doc_ref, tuple) else doc_ref
 
             print(f"✅ Successfully fetched and stored news for {country} in {lang}. Document ID: {doc_id}")
             results[lang] = {"status": "success", "doc_id": doc_id, "items_count": len(news_items)}
 
-        except requests.exceptions.HTTPError as e:
-            print(f"❌ HTTP Error for {lang}: {e}. Response: {response.text}")
-            results[lang] = {"status": "error", "message": f"HTTP Error: {e.response.status_code}"}
         except Exception as e:
+            # Handle SDK-related errors
             print(f"❌ An error occurred for {lang}: {e}")
             results[lang] = {"status": "error", "message": str(e)}
 
@@ -169,9 +165,8 @@ def fetch_and_store_news(country: str, languages: list):
 
 # --- EXAMPLE USAGE ---
 if __name__ == '__main__':
-
     COUNTRY_TO_SEARCH = "Japan"
-    TARGET_LANGUAGES = ["English", "Japanese"] # Note: Model will output the JSON text in this language
+    TARGET_LANGUAGES = ["English", "Japanese"]
 
     print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
 
