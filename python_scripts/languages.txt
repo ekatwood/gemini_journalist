@@ -1,95 +1,94 @@
-Pashto
-Dari
-Albanian
-Arabic
-Berber
-Catalan
-Portuguese
-English
-Spanish
-Armenian
-Azerbaijani
-Bengali
-Belarusian
-Russian
-Dutch
-French
-German
-Setswana
-Malay
-Bulgarian
-Khmer
-Standard Chinese (Mandarin)
-Quechua
-Aymara
-Bosnian
-Croatian
-Serbian
-Amharic
-Fijian
-Hindustani
-Finnish
-Swedish
-Tigrinya
-Estonian
-Georgian
-Greek
-Haitian Creole
-Latin
-Italian
-Icelandic
-Hindi
-Indonesian
-Farsi (Persian)
-Kurdish
-Irish
-Hebrew
-Japanese
-Kazakh
-Swahili
-Korean
-Lao
-Latvian
-Lebanese
-Sesotho
-Liberian
-Liechtensteiner
-Lithuanian
-Luxembourgish
-Malagasy
-Chichewa
-Dhivehi
-Maltese
-Marshallese
-Mauritian Creole
-Guaraní
-Romanian
-Mongolian
-Montenegrin
-Burmese
-Nepali
-Dutch
-Māori
-Norwegian (Bokmål and Nynorsk)
-Urdu
-Filipino
-Tok Pisin
-Polish
-Qatar
-Tajik
-Thai
-Turkish
-Ukrainian
-Uzbek
-Vietnamese
-Yemeni
-Zambian
-Shona
-Ndebele
-Tsonga
-Swati
-Tswana
-Northern Sotho
-Zulu
-Xhosa
-Afrikaans
+Afrikaans (Afrikaans)
+Albanian (Shqip)
+Amharic (አማርኛ)
+Arabic (العربية)
+Armenian (Հայերեն)
+Aymara (Aymar aru)
+Azerbaijani (Azərbaycan dili)
+Belarusian (Беларуская)
+Bengali (বাংলা)
+Berber (Tamazight) (Tamazight)
+Bosnian (Bosanski)
+Bulgarian (Български)
+Burmese (မြန်မာဘာသာ)
+Catalan (Català)
+Chichewa (Chicheŵa)
+Croatian (Hrvatski)
+Dari (دری)
+Dhivehi (ދިވެހި)
+Dutch (Nederlands)
+English (English)
+Estonian (Eesti)
+Farsi (Persian) (فارسی)
+Fijian (Vosa Vakaviti)
+Filipino (Wikang Filipino)
+Finnish (Suomi)
+French (Français)
+Georgian (ქართული)
+German (Deutsch)
+Greek (Ελληνικά)
+Guaraní (Avañe'ẽ)
+Haitian Creole (Kreyòl Ayisyen)
+Hebrew (עברית)
+Hindi (हिन्दी)
+Hindustani (Hindi/Urdu) (हिन्दुستانی/ہندوستانی)
+Icelandic (Íslenska)
+Indonesian (Bahasa Indonesia)
+Irish (Gaeilge)
+Italian (Italiano)
+Japanese (日本語)
+Kazakh (Қазақша)
+Khmer (ភាសាខ្មែរ)
+Korean (한국어)
+Kurdish (کوردی/Kurdî)
+Lao (ພາສາລາວ)
+Latin (Latina)
+Latvian (Latviešu)
+Lebanese (Arabic Dialect) (العربية اللبنانية/Lebanese Arabic)
+Liberian (English/Kreyol) (Liberian English/Koloqua)
+Liechtensteiner (German Dialect) (Alemannisch)
+Lithuanian (Lietuvių)
+Luxembourgish (Lëtzebuergesch)
+Māori (Te Reo Māori)
+Malagasy (Malagasy)
+Malay (Bahasa Melayu)
+Maltese (Malti)
+Marshallese (Kajin M̧ajeļ)
+Mauritian Creole (Kréol Morisien)
+Mongolian (Монгол хэл)
+Montenegrin (Crnogorski)
+Ndebele (isiNdebele)
+Nepali (नेपाली)
+Norwegian (Bokmål and Nynorsk) (Norsk)
+Northern Sotho (Sesotho sa Leboa)
+Pashto (پښتو)
+Polish (Polski)
+Portuguese (Português)
+Qatar (Arabic Dialect) (اللّهجة القَطَرِيَّة/Qatari Arabic)
+Quechua (Runa Simi)
+Romanian (Română)
+Russian (Русский)
+Serbian (Српски)
+Sesotho (Sesotho)
+Setswana (Setswana)
+Shona (ChiShona)
+Spanish (Español)
+Standard Chinese (Mandarin) (普通话/Pǔtōnghuà)
+Swahili (Kiswahili)
+Swati (SiSwati)
+Swedish (Svenska)
+Tajik (Тоҷикӣ)
+Thai (ภาษาไทย)
+Tigrinya (ትግርኛ)
+Tok Pisin (Tok Pisin)
+Tsonga (Xitsonga)
+Tswana (Setswana)
+Turkish (Türkçe)
+Ukrainian (Українська)
+Urdu (اردو)
+Uzbek (Oʻzbekcha)
+Vietnamese (Tiếng Việt)
+Xhosa (isiXhosa)
+Yemeni (Arabic Dialect) (اللهجة اليمنيّة/Yemeni Arabic)
+Zambian (English/Bemba/Nyanja) (Zambian English/Bemba/Nyanja)
+Zulu (isiZulu)
