@@ -1,5 +1,6 @@
 // firestore_functions.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import for User type
 
 // Model for a single news item
 class NewsItem {
@@ -37,6 +38,30 @@ class NewsItem {
 // Stubs for your Firestore operations
 class FirestoreFunctions {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // --- NEW: User Profile Management ---
+  Future<void> createUserProfile(User user) async {
+    final userDocRef = _firestore.collection('users').doc(user.uid);
+
+    final userData = {
+      'uid': user.uid,
+      'email': user.email,
+      'displayName': user.displayName,
+      'photoURL': user.photoURL,
+      'lastSignInTime': FieldValue.serverTimestamp(),
+      // Add any other default profile data here
+    };
+
+    // Use set with merge: true to create the document if it doesn't exist,
+    // or update the sign-in time if it does.
+    try {
+      await userDocRef.set(userData, SetOptions(merge: true));
+      print('User profile created/updated for ${user.email}');
+    } catch (e) {
+      print('Error creating user profile in Firestore: $e');
+      rethrow;
+    }
+  }
 
   // This will be called to get the news items from the database
   // The actual implementation will read from a structure like:

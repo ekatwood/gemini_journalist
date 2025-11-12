@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+  google_sign_in: ^7.1.1
   cloud_firestore: ^4.13.3
 
   # State management for AuthProvider

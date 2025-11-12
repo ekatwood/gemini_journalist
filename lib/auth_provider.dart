@@ -3,15 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html show document;
 
+// Firebase Imports
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'firestore_functions.dart'; // To create user profiles
+
 class AuthProvider extends ChangeNotifier {
   // State variables for the Gemini Journalist app
   String _selectedCountryCode = 'US'; // Default country
   String _selectedLanguageCode = 'en'; // Default language
   DateTime? _lastFetchTime; // Time the news data was last fetched
 
-  // Theme and login variables kept from model for completeness
+  // Firebase Auth variables
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  User? _currentUser;
+  bool _isLoggedIn = false; // Derived from _currentUser != null
+
+  // Theme variables
   ThemeMode _themeMode = ThemeMode.system;
-  bool _isLoggedIn = false;
+
+  // Wallet variables (kept from original for completeness, though unused in auth)
   String _walletAddress = '';
   String _walletProvider = '';
 
@@ -20,12 +32,113 @@ class AuthProvider extends ChangeNotifier {
   String get selectedLanguageCode => _selectedLanguageCode;
   ThemeMode get themeMode => _themeMode;
   DateTime? get lastFetchTime => _lastFetchTime;
+  bool get isLoggedIn => _isLoggedIn;
+  User? get currentUser => _currentUser;
+
+  // Dependency on FirestoreFunctions (injected via Provider)
+  FirestoreFunctions? _firestoreFunctions;
+
+  // Used by main.dart to set the dependency after the provider is created
+  void setFirestoreFunctions(FirestoreFunctions fs) {
+    if (_firestoreFunctions == null) {
+      _firestoreFunctions = fs;
+      // Initialize the auth listener only after dependencies are set
+      _initializeAuthListener();
+    }
+  }
 
   AuthProvider() {
     _loadThemePreference();
     _loadCountryPreference();
     _loadLanguagePreference();
     _loadLastFetchTime();
+    // NOTE: Auth Listener setup moved to setFirestoreFunctions to ensure dependency order
+  }
+
+  void _initializeAuthListener() {
+    _auth.authStateChanges().listen((User? user) async {
+      _currentUser = user;
+      _isLoggedIn = user != null;
+
+      if (_isLoggedIn) {
+        // Create or update user profile in Firestore
+        if (_firestoreFunctions != null) {
+          await _firestoreFunctions!.createUserProfile(_currentUser!);
+        }
+      }
+
+      notifyListeners();
+    });
+  }
+
+  // --- Auth Methods ---
+
+  Future<void> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        // The user cancelled the sign-in
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign into Firebase
+      await _auth.signInWithCredential(credential);
+      // The authStateChanges listener will handle state update and Firestore profile creation.
+
+    } on FirebaseAuthException catch (e) {
+      print('Google Sign-In Failed: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('An unknown error occurred during Google Sign-In: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      // The authStateChanges listener handles state update and Firestore profile.
+    } on FirebaseAuthException catch (e) {
+      print('Email Sign-In Failed: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('An unknown error occurred during Email Sign-In: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> registerWithEmailAndPassword(String email, String password) async {
+    try {
+      // Create user in Firebase Auth
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      // The authStateChanges listener handles state update and Firestore profile.
+    } on FirebaseAuthException catch (e) {
+      print('Email Registration Failed: ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('An unknown error occurred during Registration: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut(); // Ensure Google state is also cleared
+      // The authStateChanges listener handles state update.
+      _currentUser = null;
+      _isLoggedIn = false;
+      notifyListeners();
+    } catch (e) {
+      print('Sign Out Failed: $e');
+      rethrow;
+    }
   }
 
   // --- Utility: HTTP Date Format ---

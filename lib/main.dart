@@ -4,8 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // To open source links
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'dart:convert'; // For JSON encoding/decoding
+
+// Firebase Imports
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'firestore_functions.dart';
 import 'auth_provider.dart';
+import 'login_page.dart'; // NEW: Import the login page
 
 // --- Constants for Dropdown Menus (Simplified for stub) ---
 const Map<String, String> countryList = {
@@ -26,11 +32,20 @@ const Map<String, String> languageList = {
   // Add many more languages here
 };
 
+// Replace with your actual Firebase options import if needed
+// import 'firebase_options.dart';
 
-void main() {
+void main() async { // ADDED async
   // Ensure we are ready to use Providers/Flutter bindings
-  // WidgetsFlutterBinding.ensureInitialized();
-  // TODO: Initialize Firebase here
+  WidgetsFlutterBinding.ensureInitialized(); // ADDED
+
+  // TODO: Initialize Firebase here.
+  // Replace YOUR_FIREBASE_OPTIONS with the actual options for your platform.
+  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Using a stub initialization for now:
+  if (kDebugMode) {
+    print('*** Firebase Initialized (Stub) ***');
+  }
 
   runApp(
     MultiProvider(
@@ -51,6 +66,12 @@ class GeminiJournalist extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
+
+    // CRITICAL: Inject FirestoreFunctions into AuthProvider after creation
+    // This allows the AuthProvider to call Firestore methods like createUserProfile
+    authProvider.setFirestoreFunctions(firestoreFunctions);
+
 
     return MaterialApp(
       title: 'Gemini Correspondent',
@@ -66,6 +87,7 @@ class GeminiJournalist extends StatelessWidget {
         colorSchemeSeed: Colors.blue,
       ),
       themeMode: authProvider.themeMode,
+      // CHANGE 1: Always show NewsHomePage, regardless of login status.
       home: const NewsHomePage(),
     );
   }
@@ -94,6 +116,9 @@ class _NewsHomePageState extends State<NewsHomePage> {
   Future<void> _fetchNews() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
+
+    // Guard Clause: No longer check for login status here, as anonymous users can view the stub data.
+    // If you implement real security rules, you would add a check here.
 
     // Get current preferences
     final countryCode = authProvider.selectedCountryCode;
@@ -160,20 +185,19 @@ class _NewsHomePageState extends State<NewsHomePage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final isLoggedIn = authProvider.isLoggedIn;
 
-    // We want to re-fetch if country or language changes, so we listen to the provider.
-    // The provider's setter methods will clear the cache, triggering a refresh here.
+    // Trigger a refetch if preferences changed (as their setters clear cache)
     final currentCountry = authProvider.selectedCountryCode;
     final currentLanguage = authProvider.selectedLanguageCode;
 
+    // Get display name for personalized greeting
+    final displayName = isLoggedIn ? (authProvider.currentUser?.displayName ?? authProvider.currentUser?.email ?? 'User') : 'Guest';
 
-    // Trigger a refetch if preferences changed (as their setters clear cache)
-    // NOTE: This re-run of build will call didChangeDependencies, which calls _fetchNews,
-    // which will see the cleared cache and trigger the fetch.
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gemini Correspondent'),
+        title: Text('Welcome, $displayName!'), // Personalized title
         actions: [
           // Theme Toggle
           IconButton(
@@ -182,6 +206,29 @@ class _NewsHomePageState extends State<NewsHomePage> {
             ),
             onPressed: authProvider.toggleThemeMode,
           ),
+
+          // CHANGE 2: Conditional Login/Logout Button
+          if (isLoggedIn)
+          // Show Logout button if logged in
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Sign Out',
+              onPressed: () async {
+                await authProvider.signOut();
+              },
+            )
+          else
+          // Show Sign In button if not logged in
+            TextButton.icon(
+              icon: const Icon(Icons.login),
+              label: const Text('Sign In'),
+              onPressed: () {
+                // Navigate to the Login Page using push (or pushReplacement for a clean stack)
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+            ),
         ],
       ),
       body: Column(
