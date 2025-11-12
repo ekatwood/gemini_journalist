@@ -94,3 +94,243 @@ List<String> languageAutonyms = [
   'Zambian (Bemba/Nyanja)',
   'Zulu (isiZulu)'
 ];
+
+// Helper function to reorder languageAutonyms
+List<String> prioritizeLanguagesForCountry(String country) {
+  // 1. Get the list of official languages for the specified country.
+  // Use .map and .toList to ensure we work with a non-nullable List.
+  // If the country is not found, this will be an empty list.
+  final List<String> priorityLanguages = countryLanguages[country] ?? [];
+
+  if (priorityLanguages.isEmpty) {
+    // If no specific languages are found, return the original list.
+    return languageAutonyms;
+  }
+
+  // 2. Prepare the names for comparison (to handle potential formatting differences).
+  // This will store the autonym strings that match the priority language names.
+  final List<String> prioritizedList = [];
+  final List<String> remainingList = [];
+
+  // A helper function to check if a language autonym contains a priority language name.
+  bool matchesPriority(String autonym) {
+    // Extract the base language name from the autonym (e.g., "English" from "English").
+    // The name is usually before the first space or parenthesis.
+    final baseName = autonym.split('(').first.trim();
+
+    // Check if any priority language name is an exact match OR if the priority name
+    // is contained within the autonym (useful for names like "Standard Chinese (Mandarin)").
+    return priorityLanguages.any((priority) =>
+    baseName == priority || autonym.contains(priority));
+  }
+
+  // 3. Iterate through the original languageAutonyms list and split it.
+  for (final autonym in languageAutonyms) {
+    if (matchesPriority(autonym)) {
+      prioritizedList.add(autonym);
+    } else {
+      remainingList.add(autonym);
+    }
+  }
+
+  // 4. Concatenate the lists: prioritized languages first, then the rest.
+  return prioritizedList + remainingList;
+}
+
+final Map<String, List<String>> countryLanguages = {
+  'Afghanistan': ['Pashto', 'Dari'],
+  'Albania': ['Albanian'],
+  'Algeria': ['Arabic', 'Berber'],
+  'Andorra': ['Catalan'],
+  'Angola': ['Portuguese'],
+  'Antigua and Barbuda': ['English'],
+  'Argentina': ['Spanish'],
+  'Armenia': ['Armenian'],
+  'Australia': ['English'],
+  'Austria': ['German'],
+  'Azerbaijan': ['Azerbaijani'],
+  'Bahamas': ['English'],
+  'Bahrain': ['Arabic'],
+  'Bangladesh': ['Bengali'],
+  'Barbados': ['English'],
+  'Belarus': ['Belarusian', 'Russian'],
+  'Belgium': ['Dutch', 'French', 'German'],
+  'Belize': ['English'],
+  'Benin': ['French'],
+  'Bhutan': ['Dzongkha'],
+  'Bolivia (Plurinational State of)': ['Spanish', 'Quechua', 'Aymara'],
+  'Bosnia and Herzegovina': ['Bosnian', 'Croatian', 'Serbian'],
+  'Botswana': ['English', 'Setswana'],
+  'Brazil': ['Portuguese'],
+  'Brunei Darussalam': ['Malay'],
+  'Bulgaria': ['Bulgarian'],
+  'Burkina Faso': ['French'],
+  'Burundi': ['French'],
+  'Cabo Verde': ['Portuguese'],
+  'Cambodia': ['Khmer'],
+  'Cameroon': ['English', 'French'],
+  'Canada': ['English', 'French'],
+  'Central African Republic': ['French'],
+  'Chad': ['Arabic', 'French'],
+  'Chile': ['Spanish'],
+  'China': ['Standard Chinese (Mandarin)'],
+  'Colombia': ['Spanish'],
+  'Comoros': ['Arabic', 'French'],
+  'Congo (Republic of the)': ['French'],
+  'Congo (Democratic Republic of the)': ['French'],
+  'Costa Rica': ['Spanish'],
+  "Côte d'Ivoire": ['French'],
+  'Croatia': ['Croatian'],
+  'Cuba': ['Spanish'],
+  'Cyprus': ['Greek', 'Turkish'],
+  'Czechia': ['Czech'],
+  'Denmark': ['Danish'],
+  'Djibouti': ['French', 'Arabic'],
+  'Dominica': ['English'],
+  'Dominican Republic': ['Spanish'],
+  'Ecuador': ['Spanish'],
+  'Egypt': ['Arabic'],
+  'El Salvador': ['Spanish'],
+  'Equatorial Guinea': ['Spanish', 'French', 'Portuguese'],
+  'Eritrea': ['Tigrinya', 'Arabic', 'English'],
+  'Estonia': ['Estonian'],
+  'Eswatini': ['English'],
+  'Ethiopia': ['Amharic'],
+  'Fiji': ['Fijian', 'English', 'Hindustani'],
+  'Finland': ['Finnish', 'Swedish'],
+  'France': ['French'],
+  'Gabon': ['French'],
+  'Gambia': ['English'],
+  'Georgia': ['Georgian'],
+  'Germany': ['German'],
+  'Ghana': ['English'],
+  'Greece': ['Greek'],
+  'Grenada': ['English'],
+  'Guatemala': ['Spanish'],
+  'Guinea': ['French'],
+  'Guinea-Bissau': ['Portuguese'],
+  'Guyana': ['English'],
+  'Haiti': ['Haitian Creole', 'French'],
+  'Holy See (Vatican City)': ['Latin', 'Italian', 'French', 'German'],
+  'Honduras': ['Spanish'],
+  'Hungary': ['Hungarian'],
+  'Iceland': ['Icelandic'],
+  'India': ['Hindi', 'English'],
+  'Indonesia': ['Indonesian'],
+  'Iran (Islamic Republic of)': ['Farsi'],
+  'Iraq': ['Arabic', 'Kurdish'],
+  'Ireland': ['Irish', 'English'],
+  'Israel': ['Hebrew', 'Arabic'],
+  'Italy': ['Italian'],
+  'Jamaica': ['English'],
+  'Japan': ['Japanese'],
+  'Jordan': ['Arabic'],
+  'Kazakhstan': ['Kazakh', 'Russian'],
+  'Kenya': ['Swahili', 'English'],
+  'Kiribati': ['English'],
+  'Korea (Democratic People\'s Republic of)': ['Korean'],
+  'Korea (Republic of)': ['Korean'],
+  'Kuwait': ['Arabic'],
+  'Kyrgyzstan': ['Kyrgyz', 'Russian'],
+  'Lao People\'s Democratic Republic': ['Lao'],
+  'Latvia': ['Latvian'],
+  'Lebanon': ['Arabic'],
+  'Lesotho': ['Sesotho', 'English'],
+  'Liberia': ['English'],
+  'Libya': ['Arabic'],
+  'Liechtenstein': ['German'],
+  'Lithuania': ['Lithuanian'],
+  'Luxembourg': ['Luxembourgish', 'French', 'German'],
+  'Madagascar': ['Malagasy', 'French'],
+  'Malawi': ['Chichewa', 'English'],
+  'Malaysia': ['Malay'],
+  'Maldives': ['Dhivehi'],
+  'Mali': ['French'],
+  'Malta': ['Maltese', 'English'],
+  'Marshall Islands': ['Marshallese', 'English'],
+  'Mauritania': ['Arabic'],
+  'Mauritius': ['English', 'French'],
+  'Mexico': ['Spanish'],
+  'Micronesia (Federated States of)': ['English'],
+  'Moldova (Republic of)': ['Romanian'],
+  'Monaco': ['French'],
+  'Mongolia': ['Mongolian'],
+  'Montenegro': ['Montenegrin'],
+  'Morocco': ['Arabic', 'Berber'],
+  'Mozambique': ['Portuguese'],
+  'Myanmar': ['Burmese'],
+  'Namibia': ['English'],
+  'Nauru': ['English'],
+  'Nepal': ['Nepali'],
+  'Netherlands': ['Dutch'],
+  'New Zealand': ['English', 'Māori'],
+  'Nicaragua': ['Spanish'],
+  'Niger': ['French'],
+  'Nigeria': ['English'],
+  'North Macedonia': ['Macedonian'],
+  'Norway': ['Norwegian'],
+  'Oman': ['Arabic'],
+  'Pakistan': ['Urdu', 'English'],
+  'Palau': ['English'],
+  'Palestine (State of)': ['Arabic'],
+  'Panama': ['Spanish'],
+  'Papua New Guinea': ['Tok Pisin', 'English', 'Hiri Motu'],
+  'Paraguay': ['Spanish', 'Guaraní'],
+  'Peru': ['Spanish'],
+  'Philippines': ['Filipino', 'English'],
+  'Poland': ['Polish'],
+  'Portugal': ['Portuguese'],
+  'Qatar': ['Arabic'],
+  'Romania': ['Romanian'],
+  'Russian Federation': ['Russian'],
+  'Rwanda': ['Kinyarwanda', 'English', 'French'],
+  'Saint Kitts and Nevis': ['English'],
+  'Saint Lucia': ['English'],
+  'Saint Vincent and the Grenadines': ['English'],
+  'Samoa': ['Samoan', 'English'],
+  'San Marino': ['Italian'],
+  'Sao Tome and Principe': ['Portuguese'],
+  'Saudi Arabia': ['Arabic'],
+  'Senegal': ['French'],
+  'Serbia': ['Serbian'],
+  'Seychelles': ['Seychellois Creole', 'English', 'French'],
+  'Sierra Leone': ['English'],
+  'Singapore': ['English', 'Malay', 'Mandarin Chinese', 'Tamil'],
+  'Slovakia': ['Slovak'],
+  'Slovenia': ['Slovene'],
+  'Solomon Islands': ['English'],
+  'Somalia': ['Somali', 'Arabic'],
+  'South Africa': ['Afrikaans', 'English', 'Ndebele', 'Northern Sotho', 'Sotho', 'Swati', 'Tsonga', 'Tswana', 'Xhosa', 'Zulu'],
+  'South Sudan': ['English'],
+  'Spain': ['Spanish'],
+  'Sri Lanka': ['Sinhala', 'Tamil'],
+  'Sudan': ['Arabic', 'English'],
+  'Suriname': ['Dutch'],
+  'Sweden': ['Swedish'],
+  'Switzerland': ['German', 'French', 'Italian', 'Romansh'],
+  'Syrian Arab Republic': ['Arabic'],
+  'Tajikistan': ['Tajik'],
+  'Tanzania (United Republic of)': ['Swahili', 'English'],
+  'Thailand': ['Thai'],
+  'Timor-Leste': ['Portuguese'],
+  'Togo': ['French'],
+  'Tonga': ['English'],
+  'Trinidad and Tobago': ['English'],
+  'Tunisia': ['Arabic'],
+  'Turkey': ['Turkish'],
+  'Turkmenistan': ['Russian'],
+  'Tuvalu': ['English'],
+  'Uganda': ['English', 'Swahili'],
+  'Ukraine': ['Ukrainian'],
+  'United Arab Emirates': ['Arabic'],
+  'United Kingdom of Great Britain and Northern Ireland': ['English'],
+  'United States of America': ['English', 'Spanish'],
+  'Uruguay': ['Spanish'],
+  'Uzbekistan': ['Uzbek'],
+  'Vanuatu': ['English', 'French'],
+  'Venezuela (Bolivarian Republic of)': ['Spanish'],
+  'Viet Nam': ['Vietnamese'],
+  'Yemen': ['Arabic'],
+  'Zambia': ['English'],
+  'Zimbabwe': ['English'],
+};
