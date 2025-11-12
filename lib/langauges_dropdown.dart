@@ -1,4 +1,4 @@
-const List<String> languageAutonyms = [
+List<String> languageAutonyms = [
   'Afrikaans',
   'Albanian (Shqip)',
   'Amharic (አማርኛ)',
