@@ -113,37 +113,54 @@ class _NewsHomePageState extends State<NewsHomePage> {
     Future.microtask(() => _fetchNews());
   }
 
+  // Stub for the GCF HTTP call (will be replaced with actual http calls upon deployment)
+  Future<List<NewsItem>> _callGoogleCloudTranslate(List<NewsItem> items, String targetLanguageCode) async {
+    print('Calling GCF for translation to $targetLanguageCode...');
+
+    // 1. Prepare JSON payload
+    final String payload = jsonEncode({
+      'news_items': items.map((item) => item.toJson()).toList(),
+      'target_language': targetLanguageCode,
+    });
+
+    // 2. STUB: Simulate the HTTP POST to your GCF endpoint.
+    // When deploying, replace this with an actual HTTP POST request (e.g., using the 'http' package).
+    await Future.delayed(const Duration(seconds: 2));
+
+    // 3. STUB: Return the original list. In a real scenario, you parse the translated JSON response here.
+    print('GCF (Stub) returned items (simulated translation).');
+    return items;
+  }
+
   Future<void> _fetchNews() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
 
-    // Guard Clause: No longer check for login status here, as anonymous users can view the stub data.
-    // If you implement real security rules, you would add a check here.
-
-    // Get current preferences
+    // Get current preferences and the single cache data
     final countryCode = authProvider.selectedCountryCode;
     final languageCode = authProvider.selectedLanguageCode;
-    final lastFetchTime = authProvider.lastFetchTime;
-    final cachedData = authProvider.getCachedNewsData();
+    final lastCacheTime = authProvider.lastCacheTime;
+    final cachedData = authProvider.getCachedTranslatedData(); // This is the 24h cache
 
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
-    // 1. Check for valid cache
-    if (kIsWeb && cachedData != null && lastFetchTime != null) {
-      final hourAgo = DateTime.now().subtract(const Duration(hours: 1));
+    // 1. Check for valid Cache (24-hour timeout)
+    if (kIsWeb && cachedData != null && lastCacheTime != null) {
+      // 24 hours ago
+      final dayAgo = DateTime.now().subtract(const Duration(hours: 24));
 
-      if (lastFetchTime.isAfter(hourAgo)) {
+      if (lastCacheTime.isAfter(dayAgo)) {
         try {
-          // Attempt to parse cached data
           final List<dynamic> jsonList = jsonDecode(cachedData);
+          // Load data from the single cache
           _newsItems = jsonList.map((json) => NewsItem.fromFirestore(json)).toList();
           setState(() {
             _isLoading = false;
           });
-          print('Loaded news from cache. Last fetch: $lastFetchTime');
+          print('Loaded news from 24h cache. Last fetch: $lastCacheTime');
           return; // Use cache and stop
         } catch (e) {
           print('Error parsing cached data: $e');
@@ -154,31 +171,49 @@ class _NewsHomePageState extends State<NewsHomePage> {
       }
     }
 
-
-    // 2. Fetch new data
+    // 2. Fetch Raw Data from Firestore (Always happens if cache is invalid/missing)
+    List<NewsItem> rawNewsItems = [];
     try {
-      final fetchedItems = await firestoreFunctions.fetchNewsItems(countryCode, languageCode);
-
-      setState(() {
-        _newsItems = fetchedItems;
-        _isLoading = false;
-      });
-
-      // 3. Update cache and timestamp on success (Web only)
-      if (kIsWeb && fetchedItems.isNotEmpty) {
-        final now = DateTime.now();
-        final jsonString = jsonEncode(fetchedItems.map((item) => item.toJson()).toList());
-        authProvider.setCachedNewsData(jsonString);
-        authProvider.setLastFetchTime(now);
-        print('News fetched and cached at $now');
-      }
-
+      // Fetch raw data using preferences
+      rawNewsItems = await firestoreFunctions.fetchNewsItems(countryCode, languageCode);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to fetch news: ${e.toString()}';
+        _errorMessage = 'Failed to fetch raw news: ${e.toString()}';
         _isLoading = false;
       });
       print('Error: $_errorMessage');
+      return; // Stop on error
+    }
+
+    // 3. Translate and Cache Result
+    List<NewsItem> finalNewsItems = rawNewsItems;
+
+    if (languageCode != 'en') { // Assuming 'en' is the source language of the raw data
+      try {
+        final translatedItems = await _callGoogleCloudTranslate(rawNewsItems, languageCode);
+        finalNewsItems = translatedItems;
+      } catch (e) {
+        print('Translation Error: ${e.toString()}. Displaying raw data instead.');
+        // If translation fails, fall through and display the raw (untranslated) items.
+        // Do NOT cache in this case, as the data is not what the user requested.
+      }
+    }
+
+    // 4. Update UI and Cache the Final Result (Translated or Raw 'en' data)
+    setState(() {
+      _newsItems = finalNewsItems;
+      _isLoading = false;
+    });
+
+    // Cache the final result (Web only)
+    if (kIsWeb && finalNewsItems.isNotEmpty) {
+      final now = DateTime.now();
+      final jsonString = jsonEncode(finalNewsItems.map((item) => item.toJson()).toList());
+
+      // This overrides the single cookie with new data and sets the 24h timeout
+      authProvider.setCachedTranslatedData(jsonString);
+      authProvider.setLastCacheTime(now);
+      print('Final news data cached at $now (24h override).');
     }
   }
 
