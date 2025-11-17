@@ -9,30 +9,11 @@ import 'dart:convert'; // For JSON encoding/decoding
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_functions.dart';
 import 'auth_provider.dart';
 import 'login_page.dart'; // NEW: Import the login page
 
-// --- Constants for Dropdown Menus (Simplified for stub) ---
-const Map<String, String> countryList = {
-  'US': 'United States',
-  'GB': 'United Kingdom',
-  'IN': 'India',
-  'JP': 'Japan',
-  'DE': 'Germany',
-  // Add many more countries here
-};
-
-const Map<String, String> languageList = {
-  'en': 'English',
-  'es': 'Spanish',
-  'fr': 'French',
-  'de': 'German',
-  'ja': 'Japanese',
-  // Add many more languages here
-};
-
-// Replace with your actual Firebase options import if needed
 // import 'firebase_options.dart';
 
 void main() async { // ADDED async
@@ -46,6 +27,14 @@ void main() async { // ADDED async
   if (kDebugMode) {
     print('*** Firebase Initialized (Stub) ***');
   }
+  await GoogleSignIn.instance.initialize(
+    params: const GoogleSignInParams(
+      scopes: [
+        'email',
+        'profile', // You usually want profile along with email
+      ],
+    ),
+  );
 
   runApp(
     MultiProvider(

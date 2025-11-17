@@ -1,7 +1,7 @@
 import requests
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import for the Google GenAI SDK and types
 from google import genai
@@ -21,7 +21,7 @@ FIREBASE_PROJECT_ID = "gemini-journalist-8c449"
 # --- FIREBASE / GOOGLE CLOUD AUTH SETUP ---
 
 try:
-    cred = credentials.Certificate("x.json")
+    cred = credentials.Certificate("gemini-journalist-8c449-firebase-adminsdk-fbsvc-7bbb8af864.json")
     firebase_admin.initialize_app(cred)
 except Exception as e:
     print("Error connecting to Firebase: " + e)
@@ -46,39 +46,9 @@ except Exception as e:
             )
     gemini_client = GeminiClientMock()
 
-# --- JSON Response Schema Definition (For Structured Output) ---
-# The google-genai SDK requires the schema to be defined using SDK types
-# For simplicity, we use the raw JSON schema but this should ideally be
-# built using types.Schema for the SDK. The SDK can often infer from the
-# Python types, but for complex structures, we'll keep the string definition
-# and adapt the config usage.
-
-# Converting the previous JSON schema definition into a types.Schema object
-NEWS_SCHEMA = types.Schema(
-    type=types.Type.ARRAY,
-    description="An array of up to 10 key news items.",
-    items=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "title": types.Schema(type=types.Type.STRING, description="The main headline of the news item."),
-            "summary": types.Schema(type=types.Type.STRING, description="A concise summary of the news item, suitable for display on a web page."),
-            "sources": types.Schema(
-                type=types.Type.ARRAY,
-                description="An array of web sources/citations used to generate the summary.",
-                items=types.Schema(
-                    type=types.Type.OBJECT,
-                    properties={
-                        "link_title": types.Schema(type=types.Type.STRING, description="The title of the source link."),
-                        "url": types.Schema(type=types.Type.STRING, description="The full URL of the source.")
-                    },
-                    required=["link_title", "url"]
-                )
-            )
-        },
-        required=["title", "summary", "sources"]
-    )
-)
-
+# --- NEW: RETRY CONFIGURATION ---
+MAX_RETRIES = 5
+INITIAL_WAIT_TIME = 5 # seconds
 
 def fetch_and_store_news(country: str, languages: list):
     """
@@ -103,6 +73,8 @@ def fetch_and_store_news(country: str, languages: list):
             f"**Your entire response MUST be a single JSON array (with fields title, summary, and sources(link_title, url)) wrapped in ```json ... ``` code fences.** "
             f"Ensure all output text is in the {lang} language. "
             f"Use the search tool to find authoritative and up-to-date sources and include them in the 'sources' array."
+            f"Make sure to link to the original news article that is being referenced on its website."
+            f"Do not include news that is over 1 week old. If that means there are not 10 total news headlines, that is OK."
         )
 
         # 3. Create the GenerateContentConfig object
@@ -120,24 +92,67 @@ def fetch_and_store_news(country: str, languages: list):
             #response_schema=NEWS_SCHEMA
         )
 
+        # --- START OF RETRY LOGIC (New) ---
+        response = None
+        current_wait_time = INITIAL_WAIT_TIME
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                # 4. Execute the API Call using the SDK
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=user_query,
+                    config=config,
+                )
+
+                # If we get a response, break out of the retry loop
+                break
+            except Exception as e:
+                error_message = str(e)
+                # Check for 503 UNAVAILABLE (or other transient errors like 500)
+                if ("503 UNAVAILABLE" in error_message or "500 INTERNAL_SERVER_ERROR" in error_message) and attempt < MAX_RETRIES - 1:
+                    print(f"⚠️ Attempt {attempt + 1}/{MAX_RETRIES} failed with 503/500. Retrying in {current_wait_time} seconds...")
+                    time.sleep(current_wait_time)
+                    current_wait_time *= 2  # Exponential backoff
+                else:
+                    # Handle non-retryable errors (e.g., Auth, Invalid Argument, or max retries hit)
+                    print(f"❌ A persistent error occurred for {lang}: {e}")
+                    results[lang] = {"status": "error", "message": error_message}
+                    return results # Exit the language loop on a persistent error
+
+        # Check if the retry loop failed to get a response
+        if not response:
+            print(f"❌ Max retries reached for {country} in {lang}. Skipping.")
+            return results
+
+        # --- END OF RETRY LOGIC (New) ---
+
+        # 5. Process the response (Now robustly handles None and JSON extraction)
+        raw_text = response.text
+
+        # --- ROBUST JSON CHECK (New) ---
+        if not raw_text:
+            error_msg = "Model returned no text (response was empty or blocked). This is the cause of the 'NoneType' error."
+            print(f"❌ An error occurred for {lang}: {error_msg}")
+            results[lang] = {"status": "error", "message": error_msg}
+            continue # Move to the next language
+
+        # Extract the raw JSON string by stripping the markdown code fences
+        json_text = raw_text.strip()
+
+        # Use lstrip and rstrip to handle various fence formats and surrounding whitespace
+        if json_text.startswith('```json'):
+            json_text = json_text.lstrip('```json').rstrip('```')
+        elif json_text.startswith('```'):
+            json_text = json_text.lstrip('```').rstrip('```')
+
+        # Clean up leading/trailing whitespace and newlines after stripping fences
+        json_text = json_text.strip()
+
         try:
-            # 4. Execute the API Call using the SDK
-            # The SDK handles retries automatically up to a point.
-            response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=user_query,
-                config=config,
-            )
-
-            # 5. Process the response
-            # response.text will contain the JSON block wrapped in markdown fences
-            raw_text = response.text
-
-            # Extract the raw JSON string by stripping the markdown code fences
-            if raw_text.startswith('```json'):
-                json_text = raw_text.strip().replace('```json\n', '').replace('\n```', '')
-            else:
-                json_text = raw_text.strip() # Fallback for a clean output
+            # Final check before load
+            if not json_text:
+                 raise ValueError("Could not extract valid JSON from model's response text.")
 
             news_items = json.loads(json_text)
 
@@ -145,7 +160,7 @@ def fetch_and_store_news(country: str, languages: list):
             firestore_data = {
                 "country": country,
                 "language": lang,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "news_data": news_items
             }
 
@@ -156,26 +171,179 @@ def fetch_and_store_news(country: str, languages: list):
             print(f"✅ Successfully fetched and stored news for {country} in {lang}. Document ID: {doc_id}")
             results[lang] = {"status": "success", "doc_id": doc_id, "items_count": len(news_items)}
 
-        except Exception as e:
-            # Handle SDK-related errors
+        except json.JSONDecodeError as e:
+            # Handle JSON parsing specific errors
+            error_msg = f"JSON Decode Error: {e}. Raw text was: {json.dumps(raw_text, indent=2)}..."
+            print(f"❌ An error occurred during JSON parsing for {lang}: {error_msg}")
+            results[lang] = {"status": "error", "message": error_msg}
+        except ValueError as e:
+            # Handle the specific ValueError we raised for empty json_text
             print(f"❌ An error occurred for {lang}: {e}")
+            results[lang] = {"status": "error", "message": str(e)}
+        except Exception as e:
+            # Catch any other unexpected exceptions during processing/Firestore upload
+            print(f"❌ An unexpected error occurred for {lang}: {e}")
             results[lang] = {"status": "error", "message": str(e)}
 
     return results
-
+country_languages = {
+  'Cameroon': ['English'],
+  'Indonesia': ['Indonesian'],
+  'Iran (Islamic Republic of)': ['Farsi'],
+  'Iraq': ['Arabic', 'Kurdish'],
+  'Ireland': ['Irish', 'English'],
+  'Israel': ['Hebrew', 'Arabic'],
+  'Italy': ['Italian'],
+  'Jamaica': ['English'],
+  'Japan': ['Japanese'],
+  'Jordan': ['Arabic'],
+  'Kazakhstan': ['Kazakh', 'Russian'],
+  'Kenya': ['Swahili', 'English'],
+  'Kiribati': ['English'],
+  "Korea (Democratic People's Republic of)": ['Korean'],
+  'Korea (Republic of)': ['Korean'],
+  'Kuwait': ['Arabic'],
+  'Kyrgyzstan': ['Kyrgyz', 'Russian'],
+  "Lao People's Democratic Republic": ['Lao'],
+  'Latvia': ['Latvian'],
+  'Lebanon': ['Arabic'],
+  'Lesotho': ['Sesotho', 'English'],
+  'Liberia': ['English'],
+  'Libya': ['Arabic'],
+  'Liechtenstein': ['German'],
+  'Lithuania': ['Lithuanian'],
+  'Luxembourg': ['Luxembourgish', 'French', 'German'],
+  'Madagascar': ['Malagasy', 'French'],
+  'Malawi': ['Chichewa', 'English'],
+  'Malaysia': ['Malay'],
+  'Maldives': ['Dhivehi'],
+  'Mali': ['French'],
+  'Malta': ['Maltese', 'English'],
+  'Marshall Islands': ['Marshallese', 'English'],
+  'Mauritania': ['Arabic'],
+  'Mauritius': ['English', 'French'],
+  'Mexico': ['Spanish'],
+  'Micronesia (Federated States of)': ['English'],
+  'Moldova (Republic of)': ['Romanian'],
+  'Monaco': ['French'],
+  'Mongolia': ['Mongolian'],
+  'Montenegro': ['Montenegrin'],
+  'Morocco': ['Arabic', 'Berber'],
+  'Mozambique': ['Portuguese'],
+  'Myanmar': ['Burmese'],
+  'Namibia': ['English'],
+  'Nauru': ['English'],
+  'Nepal': ['Nepali'],
+  'Netherlands': ['Dutch'],
+  'New Zealand': ['English', 'Māori'],
+  'Nicaragua': ['Spanish'],
+  'Niger': ['French'],
+  'Nigeria': ['English'],
+  'North Macedonia': ['Macedonian'],
+  'Norway': ['Norwegian'],
+  'Oman': ['Arabic'],
+  'Pakistan': ['Urdu', 'English'],
+  'Palau': ['English'],
+  'Palestine (State of)': ['Arabic'],
+  'Panama': ['Spanish'],
+  'Papua New Guinea': ['Tok Pisin', 'English', 'Hiri Motu'],
+  'Paraguay': ['Spanish', 'Guaraní'],
+  'Peru': ['Spanish'],
+  'Philippines': ['Filipino', 'English'],
+  'Poland': ['Polish'],
+  'Portugal': ['Portuguese'],
+  'Qatar': ['Arabic'],
+  'Romania': ['Romanian'],
+  'Russian Federation': ['Russian'],
+  'Rwanda': ['Kinyarwanda', 'English', 'French'],
+  'Saint Kitts and Nevis': ['English'],
+  'Saint Lucia': ['English'],
+  'Saint Vincent and the Grenadines': ['English'],
+  'Samoa': ['Samoan', 'English'],
+  'San Marino': ['Italian'],
+  'Sao Tome and Principe': ['Portuguese'],
+  'Saudi Arabia': ['Arabic'],
+  'Senegal': ['French'],
+  'Serbia': ['Serbian'],
+  'Seychelles': ['Seychellois Creole', 'English', 'French'],
+  'Sierra Leone': ['English'],
+  'Singapore': ['English', 'Malay', 'Mandarin Chinese', 'Tamil'],
+  'Slovakia': ['Slovak'],
+  'Slovenia': ['Slovene'],
+  'Solomon Islands': ['English'],
+  'Somalia': ['Somali', 'Arabic'],
+  'South Africa': ['Afrikaans', 'English', 'Ndebele', 'Northern Sotho', 'Sotho', 'Swati', 'Tsonga', 'Tswana', 'Xhosa', 'Zulu'],
+  'South Sudan': ['English'],
+  'Spain': ['Spanish'],
+  'Sri Lanka': ['Sinhala', 'Tamil'],
+  'Sudan': ['Arabic', 'English'],
+  'Suriname': ['Dutch'],
+  'Sweden': ['Swedish'],
+  'Switzerland': ['German', 'French', 'Italian', 'Romansh'],
+  'Syrian Arab Republic': ['Arabic'],
+  'Tajikistan': ['Tajik'],
+  'Tanzania (United Republic of)': ['Swahili', 'English'],
+  'Thailand': ['Thai'],
+  'Timor-Leste': ['Portuguese'],
+  'Togo': ['French'],
+  'Tonga': ['English'],
+  'Trinidad and Tobago': ['English'],
+  'Tunisia': ['Arabic'],
+  'Turkey': ['Turkish'],
+  'Turkmenistan': ['Russian'],
+  'Tuvalu': ['English'],
+  'Uganda': ['English', 'Swahili'],
+  'Ukraine': ['Ukrainian'],
+  'United Arab Emirates': ['Arabic'],
+  'United Kingdom of Great Britain and Northern Ireland': ['English'],
+  'United States of America': ['English', 'Spanish'],
+  'Uruguay': ['Spanish'],
+  'Uzbekistan': ['Uzbek'],
+  'Vanuatu': ['English', 'French'],
+  'Venezuela (Bolivarian Republic of)': ['Spanish'],
+  'Viet Nam': ['Vietnamese'],
+  'Yemen': ['Arabic'],
+  'Zambia': ['English'],
+  'Zimbabwe': ['English'],
+}
 # --- EXAMPLE USAGE ---
 if __name__ == '__main__':
-    COUNTRY_TO_SEARCH = "Japan"
-    TARGET_LANGUAGES = ["English", "Japanese"]
+    # COUNTRY_TO_SEARCH = "United States of America"
+    # TARGET_LANGUAGES = ["English", "Spanish"]
+    #
+    # print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
+    #
+    # final_results = fetch_and_store_news(
+    #     country=COUNTRY_TO_SEARCH,
+    #     languages=TARGET_LANGUAGES
+    # )
+    #
+    # print("\n\nRUN SUMMARY:")
+    # print(json.dumps(final_results, indent=2))
+    counter = 0
+    for country, languages in country_languages.items():
+        if(counter == 50):
+            break
+        # 'country' is the key (e.g., "Afghanistan")
+        # 'languages' is the value (e.g., ['Pashto', 'Dari'])
 
-    print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
+        # These lines simulate the work your original code was doing:
+        COUNTRY_TO_SEARCH = country
+        TARGET_LANGUAGES = languages
 
-    final_results = fetch_and_store_news(
-        country=COUNTRY_TO_SEARCH,
-        languages=TARGET_LANGUAGES
-    )
+        # 1. Start processing for the current country
+        print(f"Starting news fetch for **{COUNTRY_TO_SEARCH}** in {TARGET_LANGUAGES}...")
 
-    print("\n\nFINAL RUN SUMMARY:")
-    print(json.dumps(final_results, indent=2))
+        # Here is where your fetch_and_store_news(country, languages) call would go
+        final_results = fetch_and_store_news(country=COUNTRY_TO_SEARCH, languages=TARGET_LANGUAGES)
 
-    print("\nIf this were a real run, check your Firestore 'news_summaries' collection!")
+        print(f"Finished processing **{COUNTRY_TO_SEARCH}**.")
+        print("\n\nRUN SUMMARY:")
+        print(json.dumps(final_results, indent=2))
+
+        print("Waiting 3 seconds...")
+        time.sleep(3)
+
+        print("---")
+
+        counter += 1

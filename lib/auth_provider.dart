@@ -18,7 +18,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Firebase Auth variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   User? _currentUser;
   bool _isLoggedIn = false; // Derived from _currentUser != null
 
@@ -205,7 +205,51 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-// ... (Google Sign In and Sign Out methods remain the same) ...
-// (Removed for brevity in this final update, assuming they were correctly in the original file)
+  Future<void> signInWithGoogle() async {
+    try {
+      // 1. Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        return;
+      }
+
+      // 2. Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // 3. Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // 4. Sign in to Firebase with the credential
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      _currentUser = userCredential.user;
+      _isLoggedIn = _currentUser != null;
+
+      // 5. Create/Update user profile in Firestore
+      if (_isLoggedIn && _firestoreFunctions != null) {
+        await _firestoreFunctions!.createUserProfile(_currentUser!);
+      }
+
+      notifyListeners();
+    } catch (e) {
+      // Handle error, e.g., network issues, configuration errors
+      print('Google Sign-In Failed: $e');
+      rethrow; // Re-throw the exception so the LoginPage can handle it
+    }
+  }
+
+  // NOTE: You should also re-add the signOut method for completeness
+  Future<void> signOut() async {
+    // 1. Sign out from Google
+    await _googleSignIn.signOut();
+    // 2. Sign out from Firebase
+    await _auth.signOut();
+    _currentUser = null;
+    _isLoggedIn = false;
+    notifyListeners();
+  }
 
 }
