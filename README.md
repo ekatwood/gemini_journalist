@@ -13,3 +13,11 @@ There will be a drop down menu to choose which country, and the ability to trans
 ## How does it make money?
 
 Advertising.
+
+## Open source funding:
+
+To donate to the development of this project, donate Arbitrum $ARB token(s) to:
+
+0xae68f894965866b8bc95f7603ba7029884e1b6be
+
+The cost to run the website including Gemini premium per month should be around $300 a month.
