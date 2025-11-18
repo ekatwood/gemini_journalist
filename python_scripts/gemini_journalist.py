@@ -1,5 +1,6 @@
 import requests
 import json
+import re
 import time
 from datetime import datetime, timezone
 
@@ -50,6 +51,30 @@ except Exception as e:
 MAX_RETRIES = 5
 INITIAL_WAIT_TIME = 5 # seconds
 
+def safe_json_load(text: str):
+    """
+    Robsutly attempts to extract and decode a JSON object from text generated
+    by a language model. This addresses the encountered anomalies:
+
+    1. Preamble/Postamble Text (Libya/Marshall Islands): Uses regex to
+       extract only the content within ```json ... ``` blocks.
+    2. Missing Delimiter (Iran): Ensures only the intended JSON is passed
+       to the parser, minimizing external corruption errors.
+    """
+    # 1. Use regex to find the content inside the first ```json ... ``` block.
+    # re.DOTALL is crucial to match newlines within the JSON content.
+    match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+
+    if match:
+        json_content = match.group(1).strip()
+    else:
+        # If no markdown fences are found, assume the entire text is the JSON
+        # (This is necessary for older models or prompts that don't enforce fences)
+        json_content = text.strip()
+
+    # 2. Attempt standard JSON decoding on the cleaned content.
+    return json.loads(json_content)
+
 def fetch_and_store_news(country: str, languages: list):
     """
     Fetches the top 10 discussed news items for a country in specified languages
@@ -84,12 +109,6 @@ def fetch_and_store_news(country: str, languages: list):
 
             # Enable Google Search grounding
             tools=[{"googleSearch": {}}],
-
-            # Request JSON output
-            #response_mime_type="application/json",
-
-            # Pass the structured schema
-            #response_schema=NEWS_SCHEMA
         )
 
         # --- START OF RETRY LOGIC (New) ---
@@ -104,6 +123,19 @@ def fetch_and_store_news(country: str, languages: list):
                     contents=user_query,
                     config=config,
                 )
+
+                # Check for empty response text (the "None" case)
+                if not response or not response.text:
+                    # If this is not the last attempt, trigger the retry/backoff
+                    if attempt < MAX_RETRIES - 1:
+                        print(f"⚠️ Attempt {attempt + 1}/{MAX_RETRIES} failed: Model returned no text. Retrying in {current_wait_time} seconds...")
+                        time.sleep(current_wait_time)
+                        current_wait_time *= 2  # Exponential backoff
+                        continue # Skip to the next iteration (retry)
+                    else:
+                        # Max retries hit for empty response
+                        print(f"❌ Final attempt failed for {lang}: Model returned no text after {MAX_RETRIES} retries.")
+                        break # Exit the loop, response remains None/empty
 
                 # If we get a response, break out of the retry loop
                 break
@@ -128,34 +160,16 @@ def fetch_and_store_news(country: str, languages: list):
         # --- END OF RETRY LOGIC (New) ---
 
         # 5. Process the response (Now robustly handles None and JSON extraction)
-        raw_text = response.text
+        news_items = safe_json_load(response.text)
 
         # --- ROBUST JSON CHECK (New) ---
-        if not raw_text:
+        if not news_items:
             error_msg = "Model returned no text (response was empty or blocked). This is the cause of the 'NoneType' error."
             print(f"❌ An error occurred for {lang}: {error_msg}")
             results[lang] = {"status": "error", "message": error_msg}
             continue # Move to the next language
 
-        # Extract the raw JSON string by stripping the markdown code fences
-        json_text = raw_text.strip()
-
-        # Use lstrip and rstrip to handle various fence formats and surrounding whitespace
-        if json_text.startswith('```json'):
-            json_text = json_text.lstrip('```json').rstrip('```')
-        elif json_text.startswith('```'):
-            json_text = json_text.lstrip('```').rstrip('```')
-
-        # Clean up leading/trailing whitespace and newlines after stripping fences
-        json_text = json_text.strip()
-
         try:
-            # Final check before load
-            if not json_text:
-                 raise ValueError("Could not extract valid JSON from model's response text.")
-
-            news_items = json.loads(json_text)
-
             # 6. Prepare data for Firestore
             firestore_data = {
                 "country": country,
@@ -187,78 +201,6 @@ def fetch_and_store_news(country: str, languages: list):
 
     return results
 country_languages = {
-  'Cameroon': ['English'],
-  'Indonesia': ['Indonesian'],
-  'Iran (Islamic Republic of)': ['Farsi'],
-  'Iraq': ['Arabic', 'Kurdish'],
-  'Ireland': ['Irish', 'English'],
-  'Israel': ['Hebrew', 'Arabic'],
-  'Italy': ['Italian'],
-  'Jamaica': ['English'],
-  'Japan': ['Japanese'],
-  'Jordan': ['Arabic'],
-  'Kazakhstan': ['Kazakh', 'Russian'],
-  'Kenya': ['Swahili', 'English'],
-  'Kiribati': ['English'],
-  "Korea (Democratic People's Republic of)": ['Korean'],
-  'Korea (Republic of)': ['Korean'],
-  'Kuwait': ['Arabic'],
-  'Kyrgyzstan': ['Kyrgyz', 'Russian'],
-  "Lao People's Democratic Republic": ['Lao'],
-  'Latvia': ['Latvian'],
-  'Lebanon': ['Arabic'],
-  'Lesotho': ['Sesotho', 'English'],
-  'Liberia': ['English'],
-  'Libya': ['Arabic'],
-  'Liechtenstein': ['German'],
-  'Lithuania': ['Lithuanian'],
-  'Luxembourg': ['Luxembourgish', 'French', 'German'],
-  'Madagascar': ['Malagasy', 'French'],
-  'Malawi': ['Chichewa', 'English'],
-  'Malaysia': ['Malay'],
-  'Maldives': ['Dhivehi'],
-  'Mali': ['French'],
-  'Malta': ['Maltese', 'English'],
-  'Marshall Islands': ['Marshallese', 'English'],
-  'Mauritania': ['Arabic'],
-  'Mauritius': ['English', 'French'],
-  'Mexico': ['Spanish'],
-  'Micronesia (Federated States of)': ['English'],
-  'Moldova (Republic of)': ['Romanian'],
-  'Monaco': ['French'],
-  'Mongolia': ['Mongolian'],
-  'Montenegro': ['Montenegrin'],
-  'Morocco': ['Arabic', 'Berber'],
-  'Mozambique': ['Portuguese'],
-  'Myanmar': ['Burmese'],
-  'Namibia': ['English'],
-  'Nauru': ['English'],
-  'Nepal': ['Nepali'],
-  'Netherlands': ['Dutch'],
-  'New Zealand': ['English', 'Māori'],
-  'Nicaragua': ['Spanish'],
-  'Niger': ['French'],
-  'Nigeria': ['English'],
-  'North Macedonia': ['Macedonian'],
-  'Norway': ['Norwegian'],
-  'Oman': ['Arabic'],
-  'Pakistan': ['Urdu', 'English'],
-  'Palau': ['English'],
-  'Palestine (State of)': ['Arabic'],
-  'Panama': ['Spanish'],
-  'Papua New Guinea': ['Tok Pisin', 'English', 'Hiri Motu'],
-  'Paraguay': ['Spanish', 'Guaraní'],
-  'Peru': ['Spanish'],
-  'Philippines': ['Filipino', 'English'],
-  'Poland': ['Polish'],
-  'Portugal': ['Portuguese'],
-  'Qatar': ['Arabic'],
-  'Romania': ['Romanian'],
-  'Russian Federation': ['Russian'],
-  'Rwanda': ['Kinyarwanda', 'English', 'French'],
-  'Saint Kitts and Nevis': ['English'],
-  'Saint Lucia': ['English'],
-  'Saint Vincent and the Grenadines': ['English'],
   'Samoa': ['Samoan', 'English'],
   'San Marino': ['Italian'],
   'Sao Tome and Principe': ['Portuguese'],
