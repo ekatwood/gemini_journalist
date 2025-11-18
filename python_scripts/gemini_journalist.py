@@ -95,12 +95,13 @@ def fetch_and_store_news(country: str, languages: list):
         # 2. Define the System Instruction for the current language
         system_instruction = (
             f"You are a helpful news curator. Your task is to provide the requested information. "
-            f"**Your entire response MUST be a single JSON array (with fields title, summary, and sources(link_title, url)) wrapped in ```json ... ``` code fences.** "
+            f"**Your entire response MUST be a single valid JSON structure (with fields title, summary, and sources(link_title, url)) wrapped in ```json ... ``` code fences.** "
             f"Ensure all output text is in the {lang} language. "
             f"Use the search tool to find authoritative and up-to-date sources and include them in the 'sources' array."
             f"Make sure to link to the original news article that is being referenced on its website."
             f"Do not include news that is over 1 week old. If that means there are not 10 total news headlines, that is OK."
         )
+
 
         # 3. Create the GenerateContentConfig object
         config = types.GenerateContentConfig(
@@ -200,92 +201,18 @@ def fetch_and_store_news(country: str, languages: list):
             results[lang] = {"status": "error", "message": str(e)}
 
     return results
-country_languages = {
-  'Samoa': ['Samoan', 'English'],
-  'San Marino': ['Italian'],
-  'Sao Tome and Principe': ['Portuguese'],
-  'Saudi Arabia': ['Arabic'],
-  'Senegal': ['French'],
-  'Serbia': ['Serbian'],
-  'Seychelles': ['Seychellois Creole', 'English', 'French'],
-  'Sierra Leone': ['English'],
-  'Singapore': ['English', 'Malay', 'Mandarin Chinese', 'Tamil'],
-  'Slovakia': ['Slovak'],
-  'Slovenia': ['Slovene'],
-  'Solomon Islands': ['English'],
-  'Somalia': ['Somali', 'Arabic'],
-  'South Africa': ['Afrikaans', 'English', 'Ndebele', 'Northern Sotho', 'Sotho', 'Swati', 'Tsonga', 'Tswana', 'Xhosa', 'Zulu'],
-  'South Sudan': ['English'],
-  'Spain': ['Spanish'],
-  'Sri Lanka': ['Sinhala', 'Tamil'],
-  'Sudan': ['Arabic', 'English'],
-  'Suriname': ['Dutch'],
-  'Sweden': ['Swedish'],
-  'Switzerland': ['German', 'French', 'Italian', 'Romansh'],
-  'Syrian Arab Republic': ['Arabic'],
-  'Tajikistan': ['Tajik'],
-  'Tanzania (United Republic of)': ['Swahili', 'English'],
-  'Thailand': ['Thai'],
-  'Timor-Leste': ['Portuguese'],
-  'Togo': ['French'],
-  'Tonga': ['English'],
-  'Trinidad and Tobago': ['English'],
-  'Tunisia': ['Arabic'],
-  'Turkey': ['Turkish'],
-  'Turkmenistan': ['Russian'],
-  'Tuvalu': ['English'],
-  'Uganda': ['English', 'Swahili'],
-  'Ukraine': ['Ukrainian'],
-  'United Arab Emirates': ['Arabic'],
-  'United Kingdom of Great Britain and Northern Ireland': ['English'],
-  'United States of America': ['English', 'Spanish'],
-  'Uruguay': ['Spanish'],
-  'Uzbekistan': ['Uzbek'],
-  'Vanuatu': ['English', 'French'],
-  'Venezuela (Bolivarian Republic of)': ['Spanish'],
-  'Viet Nam': ['Vietnamese'],
-  'Yemen': ['Arabic'],
-  'Zambia': ['English'],
-  'Zimbabwe': ['English'],
-}
+
 # --- EXAMPLE USAGE ---
 if __name__ == '__main__':
-    # COUNTRY_TO_SEARCH = "United States of America"
-    # TARGET_LANGUAGES = ["English", "Spanish"]
-    #
-    # print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
-    #
-    # final_results = fetch_and_store_news(
-    #     country=COUNTRY_TO_SEARCH,
-    #     languages=TARGET_LANGUAGES
-    # )
-    #
-    # print("\n\nRUN SUMMARY:")
-    # print(json.dumps(final_results, indent=2))
-    counter = 0
-    for country, languages in country_languages.items():
-        if(counter == 50):
-            break
-        # 'country' is the key (e.g., "Afghanistan")
-        # 'languages' is the value (e.g., ['Pashto', 'Dari'])
+    COUNTRY_TO_SEARCH = "United States of America"
+    TARGET_LANGUAGES = ["English", "Spanish"]
 
-        # These lines simulate the work your original code was doing:
-        COUNTRY_TO_SEARCH = country
-        TARGET_LANGUAGES = languages
+    print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
 
-        # 1. Start processing for the current country
-        print(f"Starting news fetch for **{COUNTRY_TO_SEARCH}** in {TARGET_LANGUAGES}...")
+    final_results = fetch_and_store_news(
+        country=COUNTRY_TO_SEARCH,
+        languages=TARGET_LANGUAGES
+    )
 
-        # Here is where your fetch_and_store_news(country, languages) call would go
-        final_results = fetch_and_store_news(country=COUNTRY_TO_SEARCH, languages=TARGET_LANGUAGES)
-
-        print(f"Finished processing **{COUNTRY_TO_SEARCH}**.")
-        print("\n\nRUN SUMMARY:")
-        print(json.dumps(final_results, indent=2))
-
-        print("Waiting 3 seconds...")
-        time.sleep(3)
-
-        print("---")
-
-        counter += 1
+    print("\n\nRUN SUMMARY:")
+    print(json.dumps(final_results, indent=2))
