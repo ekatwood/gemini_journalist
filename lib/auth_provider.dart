@@ -2,6 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html show document;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart'; // For kIsWeb and kDebugMode
 
 // Firebase Imports
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,10 +28,6 @@ class AuthProvider extends ChangeNotifier {
   // Theme variables
   ThemeMode _themeMode = ThemeMode.system;
 
-  // Wallet variables (kept from original for completeness, though unused in auth)
-  String _walletAddress = '';
-  String _walletProvider = '';
-
   // Getters
   String get selectedCountryCode => _selectedCountryCode;
   String get selectedLanguageCode => _selectedLanguageCode;
@@ -42,6 +41,28 @@ class AuthProvider extends ChangeNotifier {
 
   // Dependency on FirestoreFunctions (injected via Provider)
   FirestoreFunctions? _firestoreFunctions;
+
+  Future<String> _fetchCountryCodeFromIP() async {
+    try {
+      final response = await http.get(Uri.parse('http://ip-api.com/json'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // ip-api.com uses 'countryCode'
+        final String countryCode = data['countryCode'] ?? 'US';
+
+        if (kDebugMode) {
+          print('Auto-detected Country: $countryCode');
+        }
+        return countryCode;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('IP geolocation failed: $e');
+      }
+    }
+    return 'US';
+  }
 
   // Used by main.dart to set the dependency
   void setFirestoreFunctions(FirestoreFunctions fs) {

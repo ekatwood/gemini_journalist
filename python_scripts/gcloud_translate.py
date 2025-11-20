@@ -3,6 +3,10 @@
 import functions_framework
 import json
 from google.cloud import translate_v2 as translate
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Initialize the Google Cloud Translate client
 # It will automatically pick up credentials from the Cloud Function environment.
@@ -13,16 +17,7 @@ def translate_news_items(request):
     """
     HTTP Cloud Function to translate a list of news items.
 
-    Args:
-        request (flask.Request): The request object.
-        The request body must be a JSON object with:
-        {
-          "news_items": [
-            {"title": "...", "summary": "...", "sources": ["..."]},
-            ...
-          ],
-          "target_language": "es" // e.g., 'es', 'fr'
-        }
+    This version now also translates the 'link_title' within the 'sources' array.
     """
     # Set CORS headers for preflight requests (Dart/Flutter Web)
     if request.method == 'OPTIONS':
@@ -57,19 +52,20 @@ def translate_news_items(request):
         for item in news_items:
             original_title = item.get('title', '')
             original_summary = item.get('summary', '')
+            original_sources = item.get('sources', [])
 
-            # Translate Title
+            # --- Translate Title ---
+            translated_title = ''
             if original_title:
                 result_title = translate_client.translate(
                     original_title,
                     target_language=target_language,
-                    source_language='en' # Assuming the source from the database is English
+                    source_language='en'
                 )
                 translated_title = result_title['translatedText']
-            else:
-                translated_title = ''
 
-            # Translate Summary
+            # --- Translate Summary ---
+            translated_summary = ''
             if original_summary:
                 result_summary = translate_client.translate(
                     original_summary,
@@ -77,23 +73,41 @@ def translate_news_items(request):
                     source_language='en'
                 )
                 translated_summary = result_summary['translatedText']
-            else:
-                translated_summary = ''
 
-            # Create the new translated item (sources are not translated)
+            # --- Translate Source Titles (New Logic) ---
+            translated_sources = []
+            for source in original_sources:
+                original_link_title = source.get('link_title', '')
+
+                translated_link_title = original_link_title
+                if original_link_title:
+                    result_source_title = translate_client.translate(
+                        original_link_title,
+                        target_language=target_language,
+                        source_language='en'
+                    )
+                    translated_link_title = result_source_title['translatedText']
+
+                # Reconstruct the source object with the translated title and original URL
+                translated_sources.append({
+                    'link_title': translated_link_title,
+                    'url': source.get('url', '') # URL remains untranslated
+                })
+
+            # 3. Create the new translated item
             translated_item = {
                 'title': translated_title,
                 'summary': translated_summary,
-                'sources': item.get('sources', [])
+                'sources': translated_sources
             }
             translated_items.append(translated_item)
 
-        # 3. Return the translated list as JSON
+        # 4. Return the translated list as JSON
         return (json.dumps(translated_items), 200, headers)
 
     except ValueError as e:
+        logging.error(f"Bad Request Error: {e}")
         return (json.dumps({'error': str(e)}), 400, headers) # Bad Request
     except Exception as e:
-        # Log the full error for debugging
-        print(f"An unexpected error occurred: {e}")
+        logging.error(f"An unexpected error occurred: {e}", exc_info=True)
         return (json.dumps({'error': f"Internal Server Error: {str(e)}"}), 500, headers)
