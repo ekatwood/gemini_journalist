@@ -11,13 +11,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_functions.dart'; // To create user profiles
 
+// Define 365 days expiration for long-lived preferences
+const _kLongCookieDuration = Duration(days: 365);
+// Define 1 day expiration for the translated text cache
+const _kDailyCookieDuration = Duration(hours: 24);
+
 class AuthProvider extends ChangeNotifier {
-  // State variables for the Gemini Journalist app
+  // --- State variables for the Gemini Journalist app ---
   String _selectedCountryCode = 'US'; // Default country
   String _selectedLanguageCode = 'en'; // Default language
-
-  // NEW/RENAMED: Time the current page data (translated or raw 'en') was last cached (24h)
-  DateTime? _lastCacheTime;
 
   // Firebase Auth variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -28,27 +30,29 @@ class AuthProvider extends ChangeNotifier {
   // Theme variables
   ThemeMode _themeMode = ThemeMode.system;
 
-  // Getters
+  // --- Getters ---
   String get selectedCountryCode => _selectedCountryCode;
   String get selectedLanguageCode => _selectedLanguageCode;
   ThemeMode get themeMode => _themeMode;
 
-  // NEW/RENAMED Getter:
-  DateTime? get lastCacheTime => _lastCacheTime;
-
   bool get isLoggedIn => _isLoggedIn;
   User? get currentUser => _currentUser;
 
-  // Dependency on FirestoreFunctions (injected via Provider)
-  FirestoreFunctions? _firestoreFunctions;
+  // NEW Getter for current translated text (1-day cache)
+  String? get currentTranslatedText => _getCookie('currentTranslatedText');
 
+
+  // Dependency: Now using a local instance of FirestoreFunctions
+  final FirestoreFunctions _firestoreFunctions = FirestoreFunctions();
+
+
+  // --- Geolocation Helper (Unchanged) ---
   Future<String> _fetchCountryCodeFromIP() async {
     try {
       final response = await http.get(Uri.parse('http://ip-api.com/json'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // ip-api.com uses 'countryCode'
         final String countryCode = data['countryCode'] ?? 'US';
 
         if (kDebugMode) {
@@ -64,12 +68,8 @@ class AuthProvider extends ChangeNotifier {
     return 'US';
   }
 
-  // Used by main.dart to set the dependency
-  void setFirestoreFunctions(FirestoreFunctions fs) {
-    _firestoreFunctions = fs;
-  }
 
-  // --- Cookie Helper Methods (Unchanged) ---
+  // --- Cookie Helper Methods (Refactored) ---
   String? _getCookie(String name) {
     if (!kIsWeb) return null;
     final cookies = html.document.cookie?.split(';');
@@ -87,7 +87,6 @@ class AuthProvider extends ChangeNotifier {
   void _setCookie(String name, String value, {Duration? maxAge}) {
     if (!kIsWeb) return;
 
-    // Ensure cookie value is properly encoded
     final encodedValue = Uri.encodeComponent(value);
     String cookie = '$name=$encodedValue';
 
@@ -102,7 +101,6 @@ class AuthProvider extends ChangeNotifier {
 
   void _deleteCookie(String name) {
     if (!kIsWeb) return;
-    // Set expiration to a past date
     html.document.cookie = '$name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
   }
 
@@ -125,10 +123,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Country Preference Management (Updated to clear single cache) ---
+  // --- Country Preference Management (365 days cookie) ---
 
   void _loadCountryPreference() {
-    final String? preference = _getCookie('countryPreference');
+    final String? preference = _getCookie('selectedCountry');
     if (preference != null) {
       _selectedCountryCode = preference;
     }
@@ -137,21 +135,16 @@ class AuthProvider extends ChangeNotifier {
   void setCountryPreference(String countryCode) {
     if (_selectedCountryCode != countryCode) {
       _selectedCountryCode = countryCode;
-      _setCookie('countryPreference', countryCode);
-
-      // Clear the single 24h cache when country changes
-      _deleteCookie('translatedNewsFetchTime');
-      _lastCacheTime = null;
-      _deleteCookie('cachedTranslatedNews');
-
+      // Set the cookie with 365-day expiration
+      _setCookie('selectedCountry', countryCode, maxAge: _kLongCookieDuration);
       notifyListeners();
     }
   }
 
-  // --- Language Preference Management (Updated to clear single cache) ---
+  // --- Language Preference Management (365 days cookie) ---
 
   void _loadLanguagePreference() {
-    final String? preference = _getCookie('languagePreference');
+    final String? preference = _getCookie('selectedLanguage');
     if (preference != null) {
       _selectedLanguageCode = preference;
     }
@@ -160,117 +153,139 @@ class AuthProvider extends ChangeNotifier {
   void setLanguagePreference(String languageCode) {
     if (_selectedLanguageCode != languageCode) {
       _selectedLanguageCode = languageCode;
-      _setCookie('languagePreference', languageCode);
-
-      // Clear the single 24h cache when language changes
-      _deleteCookie('translatedNewsFetchTime');
-      _lastCacheTime = null;
-      _deleteCookie('cachedTranslatedNews');
-
+      // Set the cookie with 365-day expiration
+      _setCookie('selectedLanguage', languageCode, maxAge: _kLongCookieDuration);
       notifyListeners();
     }
   }
 
-  // --- Single Cache Management for Final Web Page Data (24h) ---
+  // --- Preferred Languages Management (365 days cookie) ---
 
-  // Caching: Load the time the data was last fetched (24h)
-  void _loadLastCacheTime() {
-    // Uses 'translatedNewsFetchTime' cookie name
-    final String? timeString = _getCookie('translatedNewsFetchTime');
-    if (timeString != null) {
-      _lastCacheTime = DateTime.tryParse(timeString);
-    } else {
-      _lastCacheTime = null;
+  void setPreferredLanguage(String languageCode) {
+    if (!kIsWeb) return;
+
+    String? current = _getCookie('preferredLanguages');
+    Set<String> languages = {};
+
+    // 1. Load existing languages
+    if (current != null && current.isNotEmpty) {
+      languages.addAll(current.split(';'));
+    }
+
+    // 2. Add the new language if it's not already there
+    if (languages.add(languageCode)) {
+      final updatedList = languages.join(';');
+      // Set the cookie with 365-day expiration
+      _setCookie('preferredLanguages', updatedList, maxAge: _kLongCookieDuration);
+      print('Updated preferred languages cookie: $updatedList');
     }
   }
 
-  // Caching: Set the last fetch/translation time
-  void setLastCacheTime(DateTime time) {
-    _lastCacheTime = time;
-    // Set a long-lived cookie for the timestamp itself
-    _setCookie('translatedNewsFetchTime', time.toIso8601String());
+
+  // --- Current Translated Text Management (1-day cookie) ---
+
+  void setCurrentTranslatedText(String translatedData) {
+    if (!kIsWeb) return;
+    // Set the cookie with 1-day expiration
+    _setCookie('currentTranslatedText', translatedData, maxAge: _kDailyCookieDuration);
     notifyListeners();
   }
-
-  // Caching: Get the cached translated news data (24h)
-  String? getCachedTranslatedData() {
-    // Uses 'cachedTranslatedNews' cookie name
-    return _getCookie('cachedTranslatedNews');
-  }
-
-  // Caching: Set the cached translated news data (24h timeout)
-  void setCachedTranslatedData(String data) {
-    // Uses 24-hour expiration for the single content cache
-    _setCookie('cachedTranslatedNews', data, maxAge: const Duration(hours: 24));
-  }
-
 
   // --- Constructor ---
   AuthProvider() {
     _loadThemePreference();
     _loadCountryPreference();
     _loadLanguagePreference();
-    _loadLastCacheTime(); // Load the single 24h cache time
+    // Removed _loadLastCacheTime
     _loadCurrentUser(); // Load Firebase user on startup
   }
 
-  // --- Firebase Auth Methods (Unchanged) ---
+  // --- Firebase Auth Methods ---
 
   Future<void> _loadCurrentUser() async {
     _currentUser = _auth.currentUser;
     _isLoggedIn = _currentUser != null;
     // If user is logged in, create/update profile
-    if (_isLoggedIn && _firestoreFunctions != null) {
-      await _firestoreFunctions!.createUserProfile(_currentUser!);
+    if (_isLoggedIn) {
+      // Direct use of _firestoreFunctions instance
+      await _firestoreFunctions.createUserProfile(_currentUser!);
+      // NOTE: Assume createUserProfile handles setting/resetting 'numTranslations' to 0 for the day.
     }
     notifyListeners();
   }
 
+  // NEW: Add signInWithEmailAndPassword for the LoginPage
+  Future<void> signInWithEmailAndPassword(String email, String password) async {
+    try {
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _currentUser = userCredential.user;
+      _isLoggedIn = _currentUser != null;
+
+      if (_isLoggedIn) {
+        await _firestoreFunctions.createUserProfile(_currentUser!);
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Email/Password Sign-In Failed: $e');
+      rethrow;
+    }
+  }
+
+  // NEW: Add registerWithEmailAndPassword for the LoginPage
+  Future<void> registerWithEmailAndPassword(String email, String password) async {
+    try {
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _currentUser = userCredential.user;
+      _isLoggedIn = _currentUser != null;
+
+      if (_isLoggedIn) {
+        await _firestoreFunctions.createUserProfile(_currentUser!);
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Email/Password Registration Failed: $e');
+      rethrow;
+    }
+  }
+
   Future<void> signInWithGoogle() async {
     try {
-      // 1. Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        // User cancelled the sign-in
-        return;
-      }
+      if (googleUser == null) return;
 
-      // 2. Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // 3. Create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Sign in to Firebase with the credential
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       _currentUser = userCredential.user;
       _isLoggedIn = _currentUser != null;
 
       // 5. Create/Update user profile in Firestore
-      if (_isLoggedIn && _firestoreFunctions != null) {
-        await _firestoreFunctions!.createUserProfile(_currentUser!);
+      if (_isLoggedIn) {
+        await _firestoreFunctions.createUserProfile(_currentUser!);
       }
 
       notifyListeners();
     } catch (e) {
-      // Handle error, e.g., network issues, configuration errors
       print('Google Sign-In Failed: $e');
-      rethrow; // Re-throw the exception so the LoginPage can handle it
+      rethrow;
     }
   }
 
-  // NOTE: You should also re-add the signOut method for completeness
   Future<void> signOut() async {
-    // 1. Sign out from Google
     await _googleSignIn.signOut();
-    // 2. Sign out from Firebase
     await _auth.signOut();
     _currentUser = null;
     _isLoggedIn = false;
     notifyListeners();
   }
-
 }
