@@ -13,6 +13,8 @@ import 'firestore_functions.dart'; // To create user profiles
 
 // Define 365 days expiration for long-lived preferences
 const _kLongCookieDuration = Duration(days: 365);
+// Define 1 week expiration for long-lived preferences
+const _kWeeklyCookieDuration = Duration(days: 7);
 // Define 1 day expiration for the translated text cache
 const _kDailyCookieDuration = Duration(hours: 24);
 
@@ -159,7 +161,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // --- Preferred Languages Management (365 days cookie) ---
+  // --- Preferred Languages Management (1 week cookie) ---
 
   void setPreferredLanguage(String languageCode) {
     if (!kIsWeb) return;
@@ -176,9 +178,18 @@ class AuthProvider extends ChangeNotifier {
     if (languages.add(languageCode)) {
       final updatedList = languages.join(';');
       // Set the cookie with 365-day expiration
-      _setCookie('preferredLanguages', updatedList, maxAge: _kLongCookieDuration);
+      _setCookie('preferredLanguages', updatedList, maxAge: _kWeeklyCookieDuration);
       print('Updated preferred languages cookie: $updatedList');
     }
+  }
+
+  List<String> get preferredLanguageCodes {
+    final String? preference = _getCookie('preferredLanguages');
+    if (preference != null && preference.isNotEmpty) {
+      // The cookie stores codes separated by a semicolon (;)
+      return preference.split(';').toList();
+    }
+    return [];
   }
 
 

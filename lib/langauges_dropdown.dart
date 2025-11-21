@@ -96,38 +96,82 @@ List<String> languageAutonyms = [
 ];
 
 // Helper function to reorder languageAutonyms
-List<String> prioritizeLanguagesForCountry(String country) {
+// Helper function to reorder languageAutonyms
+List<String> prioritizeLanguagesForCountry(
+    String country,
+    {List<String>? preferredLanguages} // NEW: Optional list of language codes
+    ) {
   // 1. Get the list of official languages for the specified country.
-  // Use .map and .toList to ensure we work with a non-nullable List.
-  // If the country is not found, this will be an empty list.
-  final List<String> priorityLanguages = countryLanguages[country] ?? [];
+  final List<String> officialLanguageNames = countryLanguages[country] ?? [];
 
-  if (priorityLanguages.isEmpty) {
-    // If no specific languages are found, return the original list.
+  // Combine official languages and preferred languages for prioritization
+  // Preferred languages will be processed after official languages.
+  final List<String> allPriorities = [];
+
+  // Official Languages (Highest Priority)
+  if (officialLanguageNames.isNotEmpty) {
+    allPriorities.addAll(officialLanguageNames);
+  }
+
+  // Preferred Languages from Cookie (Secondary Priority)
+  // We need to convert codes to names for matching if they are present.
+  final Map<String, String> codeToNameMap = dropdownCodeMap.map((key, value) => MapEntry(value, key));
+
+  if (preferredLanguages != null && preferredLanguages.isNotEmpty) {
+    // 1. Convert language codes to the display autonym string.
+    final List<String> preferredAutonyms = preferredLanguages
+        .map((code) => codeToNameMap[code])
+        .where((name) => name != null) // Filter out codes not found
+        .cast<String>()
+        .toList();
+
+    // 2. Add only unique preferred languages that aren't already official.
+    for (var preferred in preferredAutonyms) {
+      // NOTE: This check is a simplification. For robust matching, you'd need
+      // to compare the base names like in the `matchesPriority` function.
+      // For now, we'll check if the full autonym string is in the `allPriorities` list.
+      if (!allPriorities.contains(preferred)) {
+        allPriorities.add(preferred);
+      }
+    }
+  }
+
+
+  // If no specific priorities are found, return the original list.
+  if (allPriorities.isEmpty) {
     return languageAutonyms;
   }
 
   // 2. Prepare the names for comparison (to handle potential formatting differences).
-  // This will store the autonym strings that match the priority language names.
   final List<String> prioritizedList = [];
   final List<String> remainingList = [];
 
-  // A helper function to check if a language autonym contains a priority language name.
+  // A helper function to check if a language autonym matches one of the priority names.
   bool matchesPriority(String autonym) {
     // Extract the base language name from the autonym (e.g., "English" from "English").
-    // The name is usually before the first space or parenthesis.
     final baseName = autonym.split('(').first.trim();
 
-    // Check if any priority language name is an exact match OR if the priority name
+    // Check if any priority name is an exact match OR if the priority name
     // is contained within the autonym (useful for names like "Standard Chinese (Mandarin)").
-    return priorityLanguages.any((priority) =>
-    baseName == priority || autonym.contains(priority));
+    return allPriorities.any((priority) =>
+    // Check against the full autonym (for exact matches from the dropdown list)
+    autonym == priority ||
+        // Check against the base name (for matches from countryLanguages)
+        baseName == priority ||
+        // Check if the autonym contains the priority name
+        autonym.contains(priority));
   }
 
   // 3. Iterate through the original languageAutonyms list and split it.
   for (final autonym in languageAutonyms) {
     if (matchesPriority(autonym)) {
-      prioritizedList.add(autonym);
+      // Prevent duplicates by ensuring the autonym is not already added.
+      // This is necessary because both official and preferred languages are
+      // checked against the full list, and a match will be found twice if
+      // an official language is also in the preferred list.
+      if (!prioritizedList.contains(autonym)) {
+        prioritizedList.add(autonym);
+      }
     } else {
       remainingList.add(autonym);
     }
