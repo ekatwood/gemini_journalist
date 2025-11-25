@@ -8,6 +8,7 @@ import 'dart:convert'; // For JSON encoding/decoding
 // Firebase Imports
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_functions.dart';
@@ -20,9 +21,7 @@ void main() async { // ADDED async
   // Ensure we are ready to use Providers/Flutter bindings
   WidgetsFlutterBinding.ensureInitialized(); // ADDED
 
-  // TODO: Initialize Firebase here.
-  // Replace YOUR_FIREBASE_OPTIONS with the actual options for your platform.
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Using a stub initialization for now:
   if (kDebugMode) {
     print('*** Firebase Initialized (Stub) ***');
@@ -34,6 +33,14 @@ void main() async { // ADDED async
         'profile', // You usually want profile along with email
       ],
     ),
+  );
+
+  await FirebaseAppCheck.instance.activate(
+    webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
+    // Default providers for mobile:
+    // Android: Play Integrity (recommended) or SafetyNet
+    // Apple: DeviceCheck (iOS 11+) or App Attest (iOS 14+)
+    // If you don't specify these, the SDK uses the default for the platform.
   );
 
   runApp(
