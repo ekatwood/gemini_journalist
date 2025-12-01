@@ -28,10 +28,12 @@ void main() async { // ADDED async
     print('*** Firebase Initialized (Stub) ***');
   }
   await GoogleSignIn.instance.initialize(
-    scopes: [ // Removed params: const GoogleSignInParams(...)
-      'email',
-      'profile',
-    ],
+    configuration: const SignInConfiguration( // <-- CORRECT CLASS NAME
+      scopes: <String>[ // Scopes are passed inside the configuration object
+        'email',
+        'profile',
+      ],
+    ),
   );
 
   await FirebaseAppCheck.instance.activate(
@@ -62,11 +64,6 @@ class GeminiJournalist extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
-
-    // CRITICAL: Inject FirestoreFunctions into AuthProvider after creation
-    // This allows the AuthProvider to call Firestore methods like createUserProfile
-    authProvider.setFirestoreFunctions(firestoreFunctions);
-
 
     return MaterialApp(
       title: 'Gemini Correspondent',
