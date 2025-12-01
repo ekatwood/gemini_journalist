@@ -41,8 +41,7 @@ class AuthProvider extends ChangeNotifier {
   User? get currentUser => _currentUser;
 
   // NEW Getter for current translated text (1-day cache)
-  String? get currentTranslatedText => _getCookie('currentTranslatedText');
-
+  String? get getCachedTranslatedData => _getCookie('currentTranslatedText');
 
   // Dependency: Now using a local instance of FirestoreFunctions
   final FirestoreFunctions _firestoreFunctions = FirestoreFunctions();
@@ -195,11 +194,33 @@ class AuthProvider extends ChangeNotifier {
 
   // --- Current Translated Text Management (1-day cookie) ---
 
-  void setCurrentTranslatedText(String translatedData) {
+  void setCachedTranslatedData(String translatedData) {
     if (!kIsWeb) return;
     // Set the cookie with 1-day expiration
     _setCookie('currentTranslatedText', translatedData, maxAge: _kDailyCookieDuration);
     notifyListeners();
+  }
+  // --- Last Cache Time Management ---
+
+  // Getter for the last cache time
+  DateTime? get lastCacheTime {
+    final String? timeString = _getCookie('lastCacheTime');
+    if (timeString != null) {
+      try {
+        return DateTime.parse(timeString);
+      } catch (e) {
+        print('Error parsing cached date: $e');
+        return null;
+      }
+    }
+    return null;
+  }
+
+  void setLastCacheTime(DateTime time) {
+    if (!kIsWeb) return;
+    // Set a separate cookie for the time, using the long duration as the cache is cleared by data set
+    _setCookie('lastCacheTime', time.toIso8601String(), maxAge: _kDailyCookieDuration);
+    notifyListeners(); // Notify listeners of the time change (optional, but good practice)
   }
 
   // --- Constructor ---
@@ -207,7 +228,6 @@ class AuthProvider extends ChangeNotifier {
     _loadThemePreference();
     _loadCountryPreference();
     _loadLanguagePreference();
-    // Removed _loadLastCacheTime
     _loadCurrentUser(); // Load Firebase user on startup
   }
 

@@ -11,8 +11,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 import 'package:google_sign_in/google_sign_in.dart';
+import 'firebase_options.dart';
 import 'firestore_functions.dart';
-import 'auth_provider.dart';
+import 'auth_provider.dart' as ap;
 import 'login_page.dart'; // NEW: Import the login page
 
 // import 'firebase_options.dart';
@@ -27,12 +28,10 @@ void main() async { // ADDED async
     print('*** Firebase Initialized (Stub) ***');
   }
   await GoogleSignIn.instance.initialize(
-    params: const GoogleSignInParams(
-      scopes: [
-        'email',
-        'profile', // You usually want profile along with email
-      ],
-    ),
+    scopes: [ // Removed params: const GoogleSignInParams(...)
+      'email',
+      'profile',
+    ],
   );
 
   await FirebaseAppCheck.instance.activate(
@@ -47,7 +46,7 @@ void main() async { // ADDED async
     MultiProvider(
       providers: [
         // AuthProvider handles user preferences and caching logic
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ap.AuthProvider()),
         // FirestoreFunctions is stateless, so we can use Provider.value
         Provider<FirestoreFunctions>(create: (_) => FirestoreFunctions()),
       ],
