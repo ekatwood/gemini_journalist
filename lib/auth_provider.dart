@@ -285,32 +285,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      _currentUser = userCredential.user;
-      _isLoggedIn = _currentUser != null;
-
-      // 5. Create/Update user profile in Firestore
-      if (_isLoggedIn) {
-        await _firestoreFunctions.createUserProfile(_currentUser!);
-      }
-
-      notifyListeners();
-    } catch (e) {
-      print('Google Sign-In Failed: $e');
-      rethrow;
-    }
-  }
+  // --- REMOVED: signInWithGoogle method (Logic now resides in GoogleSignInScreen) ---
 
   Future<void> signOut() async {
     await _googleSignIn.signOut();

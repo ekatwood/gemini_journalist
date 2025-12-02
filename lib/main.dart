@@ -15,8 +15,10 @@ import 'firebase_options.dart';
 import 'firestore_functions.dart';
 import 'auth_provider.dart' as ap;
 import 'login_page.dart'; // NEW: Import the login page
+import 'country_data.dart'; //
+import 'langauges_dropdown.dart'; //
 
-// import 'firebase_options.dart';
+import 'firebase_options.dart';
 
 void main() async { // ADDED async
   // Ensure we are ready to use Providers/Flutter bindings
@@ -27,14 +29,15 @@ void main() async { // ADDED async
   if (kDebugMode) {
     print('*** Firebase Initialized (Stub) ***');
   }
-  await GoogleSignIn.instance.initialize(
-    configuration: const SignInConfiguration( // <-- CORRECT CLASS NAME
-      scopes: <String>[ // Scopes are passed inside the configuration object
-        'email',
-        'profile',
-      ],
-    ),
-  );
+  // *** KEEP THIS FOR GLOBAL INITIALIZATION ***
+  // await GoogleSignIn.instance.initialize(
+  //   configuration: const SignInConfiguration(
+  //     scopes: <String>[
+  //       'email',
+  //       'profile',
+  //     ],
+  //   ),
+  // );
 
   await FirebaseAppCheck.instance.activate(
     webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
@@ -62,7 +65,7 @@ class GeminiJournalist extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<ap.AuthProvider>(context);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
 
     return MaterialApp(
@@ -125,14 +128,14 @@ class _NewsHomePageState extends State<NewsHomePage> {
   }
 
   Future<void> _fetchNews() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<ap.AuthProvider>(context, listen: false);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
 
     // Get current preferences and the single cache data
     final countryCode = authProvider.selectedCountryCode;
     final languageCode = authProvider.selectedLanguageCode;
     final lastCacheTime = authProvider.lastCacheTime;
-    final cachedData = authProvider.getCachedTranslatedData(); // This is the 24h cache
+    final cachedData = authProvider.getCachedTranslatedData; // This is the 24h cache
 
     setState(() {
       _isLoading = true;
@@ -211,7 +214,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<ap.AuthProvider>(context);
     final isLoggedIn = authProvider.isLoggedIn;
 
     // Trigger a refetch if preferences changed (as their setters clear cache)
@@ -271,7 +274,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   context,
                   'Country',
                   currentCountry,
-                  countryList,
+                  allCountries as Map<String, String>,
                       (String? newValue) {
                     if (newValue != null) {
                       authProvider.setCountryPreference(newValue);
@@ -286,7 +289,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   context,
                   'Translate To',
                   currentLanguage,
-                  languageList,
+                  languageAutonyms as Map<String, String>,
                       (String? newValue) {
                     if (newValue != null) {
                       authProvider.setLanguagePreference(newValue);

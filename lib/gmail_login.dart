@@ -1,37 +1,8 @@
+// gmail_login.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
-// --- Initialization (Mock for Demo) ---
-// In a real application, you would initialize Firebase correctly in main()
-// and ensure all platform setups are complete.
-// Future<void> main() async {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   await Firebase.initializeApp();
-//   runApp(const GoogleSignInApp());
-// }
-
-// A simplified main function for running this single file in a development environment.
-void main() {
-  runApp(const GoogleSignInApp());
-}
-
-class GoogleSignInApp extends StatelessWidget {
-  const GoogleSignInApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Google Auth Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const GoogleSignInScreen(),
-    );
-  }
-}
+import 'firestore_functions.dart';
 
 // --- Google Sign-In Screen ---
 
@@ -45,9 +16,11 @@ class GoogleSignInScreen extends StatefulWidget {
 class _GoogleSignInScreenState extends State<GoogleSignInScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // FIX: Use the singleton instance as required by your environment.
-  // Configuration (like scopes) will be passed to the signIn() method instead.
+  // Use the singleton instance
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+
+  // Add FirestoreFunctions instance
+  final FirestoreFunctions _firestoreFunctions = FirestoreFunctions();
 
   // Define the required scopes here
   static const List<String> requiredScopes = <String>['email'];
@@ -94,9 +67,19 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen> {
       );
 
       // 4. Sign in to Firebase with the credential
-      await _auth.signInWithCredential(credential);
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user;
 
-      // Successfully signed in. The authStateChanges listener will update the UI.
+      // Create/Update user profile in Firestore after successful sign-in
+      if (user != null) {
+        await _firestoreFunctions.createUserProfile(user);
+      }
+
+      // Successfully signed in. Dismiss the screen.
+      if (mounted) {
+        // The screen was pushed, so pop it to return to the LoginPage
+        Navigator.of(context).pop();
+      }
 
     } on FirebaseAuthException catch (e) {
       _showErrorSnackbar(context, 'Firebase Auth Error: ${e.message}');
@@ -113,7 +96,6 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen> {
 
   // Function to sign out the user
   Future<void> _signOut() async {
-    // Note: signOut() works even if scopes weren't passed during instance creation
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
@@ -134,11 +116,11 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Google Sign-In Demo'),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-      ),
+      // appBar: AppBar(
+      //   title: const Text('Google Sign-In'),
+      //   backgroundColor: Colors.blueAccent,
+      //   foregroundColor: Colors.white,
+      // ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

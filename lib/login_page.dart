@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth_provider.dart';
+import 'gmail_login.dart'; // <<< ADDED IMPORT
 
 enum AuthMode { login, register }
 
@@ -71,26 +72,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    try {
-      await authProvider.signInWithGoogle();
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Google Sign-In failed.';
-        _isLoading = false;
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  // --- REMOVED: _signInWithGoogle method ---
 
   @override
   Widget build(BuildContext context) {
@@ -176,11 +158,16 @@ class _LoginPageState extends State<LoginPage> {
                   const Text('OR'),
                   const SizedBox(height: 20),
 
-                  // Google Sign-In Button
+                  // Google Sign-In Button (Now navigates to the dedicated screen)
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _signInWithGoogle,
+                      onPressed: () {
+                        // Navigates to the dedicated Google Sign-In Screen
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const GoogleSignInScreen()),
+                        );
+                      },
                       icon: Image.asset(
                         'assets/google_logo.png', // Placeholder for Google logo asset
                         height: 24.0,
