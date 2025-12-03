@@ -274,7 +274,11 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   context,
                   'Country',
                   currentCountry,
-                  allCountries as Map<String, String>,
+                  Map<String, String>.fromIterable(
+                    allCountries,
+                    key: (country) => country.code,
+                    value: (country) => country.name,
+                  ),
                       (String? newValue) {
                     if (newValue != null) {
                       authProvider.setCountryPreference(newValue);
@@ -289,7 +293,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   context,
                   'Translate To',
                   currentLanguage,
-                  languageAutonyms as Map<String, String>,
+                  languageCodeToName,
                       (String? newValue) {
                     if (newValue != null) {
                       authProvider.setLanguagePreference(newValue);

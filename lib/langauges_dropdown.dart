@@ -476,3 +476,7 @@ const Map<String, String> dropdownCodeMap = {
   'Zambian (English)': 'en',
   'Zulu (isiZulu)': 'zu',
 };
+
+// NEW: Inverted map for use in the Dropdown widget (Code: Name)
+final Map<String, String> languageCodeToName =
+dropdownCodeMap.map((name, code) => MapEntry(code, name));
