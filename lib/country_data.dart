@@ -222,6 +222,4 @@ const Map<String, String> _countryCodeToName = {
 /// with the full name for the UI.
 final List<Country> allCountries = _countryCodeToName.entries
     .map((entry) => Country(code: entry.key, name: entry.value))
-    .toList()
-// Optional: Sort by display name for a better user experience
-  ..sort((a, b) => a.name.compareTo(b.name));
+    .toList();
