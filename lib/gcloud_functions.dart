@@ -1,4 +1,4 @@
-import 'langauges_dropdown.dart';
+import 'languages_dropdown.dart';
 
 // Function to call the Cloud Function
 // Future<Map<String, dynamic>> translateNews(

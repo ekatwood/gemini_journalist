@@ -16,7 +16,7 @@ import 'firestore_functions.dart';
 import 'auth_provider.dart' as ap;
 import 'login_page.dart'; // NEW: Import the login page
 import 'country_data.dart'; //
-import 'langauges_dropdown.dart'; //
+import 'languages_dropdown.dart'; //
 
 import 'firebase_options.dart';
 
@@ -293,12 +293,16 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   context,
                   'Translate To',
                   currentLanguage,
-                  languageCodeToName,
+                  Map<String, String>.fromIterable(
+                    allLanguages, // <--- Change this
+                    key: (language) => language.code,
+                    value: (language) => language.name,
+                  ),
                       (String? newValue) {
                     if (newValue != null) {
-                      authProvider.setLanguagePreference(newValue);
+                      //authProvider.setLanguagePreference(newValue);
                       // TODO: just do a _translateText() function
-                      _fetchNews(); // Re-fetch data on preference change
+                      //_fetchNews(); // Re-fetch data on preference change
                     }
                   },
                 ),

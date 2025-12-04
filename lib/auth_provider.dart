@@ -142,56 +142,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // --- Language Preference Management (365 days cookie) ---
-
-  void _loadLanguagePreference() {
-    final String? preference = _getCookie('selectedLanguage');
-    if (preference != null) {
-      _selectedLanguageCode = preference;
-    }
-  }
-
-  void setLanguagePreference(String languageCode) {
-    if (_selectedLanguageCode != languageCode) {
-      _selectedLanguageCode = languageCode;
-      // Set the cookie with 365-day expiration
-      _setCookie('selectedLanguage', languageCode, maxAge: _kLongCookieDuration);
-      notifyListeners();
-    }
-  }
-
-  // --- Preferred Languages Management (1 week cookie) ---
-
-  void setPreferredLanguage(String languageCode) {
-    if (!kIsWeb) return;
-
-    String? current = _getCookie('preferredLanguages');
-    Set<String> languages = {};
-
-    // 1. Load existing languages
-    if (current != null && current.isNotEmpty) {
-      languages.addAll(current.split(';'));
-    }
-
-    // 2. Add the new language if it's not already there
-    if (languages.add(languageCode)) {
-      final updatedList = languages.join(';');
-      // Set the cookie with 365-day expiration
-      _setCookie('preferredLanguages', updatedList, maxAge: _kWeeklyCookieDuration);
-      print('Updated preferred languages cookie: $updatedList');
-    }
-  }
-
-  List<String> get preferredLanguageCodes {
-    final String? preference = _getCookie('preferredLanguages');
-    if (preference != null && preference.isNotEmpty) {
-      // The cookie stores codes separated by a semicolon (;)
-      return preference.split(';').toList();
-    }
-    return [];
-  }
-
-
   // --- Current Translated Text Management (1-day cookie) ---
 
   void setCachedTranslatedData(String translatedData) {
@@ -227,7 +177,6 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     _loadThemePreference();
     _loadCountryPreference();
-    _loadLanguagePreference();
     _loadCurrentUser(); // Load Firebase user on startup
   }
 
