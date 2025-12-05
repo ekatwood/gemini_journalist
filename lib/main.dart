@@ -413,7 +413,8 @@ class NewsItemCard extends StatelessWidget {
   final int number;
   final String title;
   final String summary;
-  final List<String> sources;
+  // CHANGE 1: Update type to the new SourceLink model
+  final List<SourceLink> sources;
 
   const NewsItemCard({
     super.key,
@@ -423,12 +424,9 @@ class NewsItemCard extends StatelessWidget {
     required this.sources,
   });
 
-  // Utility to launch the URL in the source. This is a stub, assuming the source
-  // contains the full link text/URL as a string.
-  Future<void> _launchUrl(String sourceText) async {
-    // A more robust implementation would parse the link from the source text
-    // For this stub, we'll just check if the text *looks* like a URL and launch it.
-    final String urlString = sourceText.split(':').last.trim(); // Heuristic to get URL part
+  // Utility to launch the URL from the SourceLink object
+  Future<void> _launchUrl(String urlString) async {
+    // CHANGED: Use the direct URL string
     final Uri uri = Uri.tryParse(urlString) ?? Uri.parse('https://news.google.com'); // Fallback
 
     if (await canLaunchUrl(uri)) {
@@ -465,15 +463,18 @@ class NewsItemCard extends StatelessWidget {
 
             // Footer with Sources
             const Text(
-              'Footer with Sources:',
+              'Sources:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
+            // CHANGE 2: Iterate over SourceLink objects
             ...sources.map((source) => Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: InkWell(
-                onTap: () => _launchUrl(source),
+                // Use source.url for launching
+                onTap: () => _launchUrl(source.url),
                 child: Text(
-                  source,
+                  // Use SourceLink.toString() for display (e.g., 'Title: URL')
+                  source.toString(),
                   style: const TextStyle(
                     color: Colors.blue,
                     decoration: TextDecoration.underline,
