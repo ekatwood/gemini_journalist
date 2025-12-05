@@ -9,7 +9,7 @@ class Language {
   });
 }
 
-const Map<String, String> _languageCodeToNameMap = {
+const Map<String, String> languageCodeToNameMap = {
   'af': 'Afrikaans',
   'sq': 'Albanian (Shqip)',
   'am': 'Amharic (አማርኛ)',
@@ -111,13 +111,21 @@ const Map<String, String> _languageCodeToNameMap = {
   'zu': 'Zulu (isiZulu)'
 };
 
+// NEW REVERSE MAP: Language Name to Code
+final Map<String, String> languageNameToCodeMap =
+languageCodeToNameMap.map((key, value) {
+  // Strip parenthetical content (e.g., 'English' from 'English (en)') for exact name matching
+  final cleanName = value.split('(').first.trim();
+  return MapEntry(cleanName, key);
+});
+
 // ----------------------------------------------------------------------
 // FINAL EXPORTED LIST: The ultimate source for your dropdown UI.
 // ----------------------------------------------------------------------
 
 /// A constant list of all supported languages, pairing the code for logic
 /// with the full name for the UI.
-final List<Language> allLanguages = _languageCodeToNameMap.entries
+final List<Language> allLanguages = languageCodeToNameMap.entries
     .map((entry) => Language(code: entry.key, name: entry.value))
     .toList();
 

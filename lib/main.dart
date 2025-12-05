@@ -221,6 +221,23 @@ class _NewsHomePageState extends State<NewsHomePage> {
     final currentCountry = authProvider.selectedCountryCode;
     final currentLanguage = authProvider.selectedLanguageCode;
 
+    // *** NEW LOGIC STARTS HERE ***
+    // 1. Get the list of language names for the current country
+    final countryLangNames = countryLanguages[currentCountry] ?? [];
+
+    // 2. Convert these names into a Set of their language codes for efficient lookup
+    final Set<String> countryLanguageCodes = countryLangNames
+        .map((name) {
+      // Look up the code using the reverse map from languages_dropdown.dart
+      // Note: You may need to update the import for _languageNameToCodeMap
+      // or create a public helper function in languages_dropdown.dart to access it.
+      // For simplicity, we'll assume we can access it directly after updating imports/exports.
+      return languageNameToCodeMap[name];
+    })
+        .whereType<String>() // Filter out nulls if a name isn't found
+        .toSet();
+    // *** NEW LOGIC ENDS HERE ***
+
     // Get display name for personalized greeting
     final displayName = isLoggedIn ? (authProvider.currentUser?.displayName ?? authProvider.currentUser?.email ?? 'User') : 'Guest';
 
@@ -285,6 +302,8 @@ class _NewsHomePageState extends State<NewsHomePage> {
                       _fetchNews(); // Re-fetch data on preference change
                     }
                   },
+                  // Pass an empty set for the country dropdown
+                  {},
                 ),
                 const SizedBox(width: 16),
 
@@ -305,6 +324,8 @@ class _NewsHomePageState extends State<NewsHomePage> {
                       //_fetchNews(); // Re-fetch data on preference change
                     }
                   },
+                  // Pass the calculated set of highlighted codes!
+                  countryLanguageCodes,
                 ),
               ],
             ),
@@ -328,6 +349,8 @@ class _NewsHomePageState extends State<NewsHomePage> {
       String currentValue,
       Map<String, String> items,
       void Function(String?) onChanged,
+      // NEW ARGUMENT: A set of codes that should be highlighted/bolded.
+      Set<String> highlightCodes,
       ) {
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
@@ -335,9 +358,18 @@ class _NewsHomePageState extends State<NewsHomePage> {
         onChanged: onChanged,
         hint: Text(label),
         items: items.entries.map((entry) {
+          // Check if the current language code is in the highlight set
+          final isHighlighted = highlightCodes.contains(entry.key);
+
           return DropdownMenuItem<String>(
             value: entry.key,
-            child: Text(entry.value),
+            child: Text(
+              entry.value,
+              // Apply bold style if it's a highlighted language
+              style: isHighlighted
+                  ? const TextStyle(fontWeight: FontWeight.bold)
+                  : null,
+            ),
           );
         }).toList(),
       ),
