@@ -26,9 +26,11 @@ const Map<String, String> _languageCodeToNameMap = {
   'ca': 'Catalan (Català)',
   'ny': 'Chichewa (Chicheŵa)',
   'hr': 'Croatian (Hrvatski)',
+  'da': 'Danish (Dansk)', // Missing in initial map but added for completeness
   'prs': 'Dari (دری)',
   'dv': 'Dhivehi (ދިވެހި)',
   'nl': 'Dutch (Nederlands)',
+  'dz': 'Dzongkha (རྫོང་ཁ)', // NEW
   'en': 'English',
   'et': 'Estonian (Eesti)',
   'fa': 'Farsi (Persian) (فارسی)',
@@ -43,6 +45,9 @@ const Map<String, String> _languageCodeToNameMap = {
   'ht': 'Haitian Creole (Kreyòl Ayisyen)',
   'iw': 'Hebrew (עברית)',
   'hi': 'Hindi',
+  'ho': 'Hiri Motu', // NEW (Used ISO 639-2)
+  'hnd': 'Hindustani', // NEW (General term, used a descriptive code)
+  'hu': 'Hungarian (Magyar)', // Missing in initial map but added for completeness
   'is': 'Icelandic (Íslenska)',
   'id': 'Indonesian (Bahasa Indonesia)',
   'ga': 'Irish (Gaeilge)',
@@ -50,13 +55,16 @@ const Map<String, String> _languageCodeToNameMap = {
   'ja': 'Japanese (日本語)',
   'kk': 'Kazakh (Қазақ тілі)',
   'km': 'Khmer (ភាសាខ្មែរ)',
+  'rw': 'Kinyarwanda (Ikinyarwanda)', // NEW
   'ko': 'Korean (한국어)',
   'ku': 'Kurdish (Kurdî)',
+  'ky': 'Kyrgyz (Кыргызча)', // Missing in initial map but added for completeness
   'lo': 'Lao (ພາສາລາວ)',
   'la': 'Latin (Latina)',
   'lv': 'Latvian (Latviešu valoda)',
   'lt': 'Lithuanian (Lietuvių kalba)',
   'lb': 'Luxembourgish (Lëtzebuergesch)',
+  'mk': 'Macedonian (Македонски)', // NEW
   'mi': 'Māori (Te reo Māori)',
   'mg': 'Malagasy (Malagasy)',
   'ms': 'Malay (Bahasa Melayu)',
@@ -72,28 +80,35 @@ const Map<String, String> _languageCodeToNameMap = {
   'qu': 'Quechua (Runa Simi)',
   'ro': 'Romanian (Română)',
   'ru': 'Russian (Русский)',
+  'sm': 'Samoan (Gagana Sāmoa)', // NEW
+  'srp': 'Serbian (Srpski/Српски)', // NEW (Used ISO 639-3 to avoid collision with Montenegrin, which was mapped to 'sr')
+  'sco': 'Seychellois Creole (Seselwa)', // NEW
   'st': 'Sesotho (Sesotho)',
   'tn': 'Setswana (Setswana)',
   'sn': 'Shona (chiShona)',
   'sk': 'Slovak (Slovenčina)',
   'sl': 'Slovene (Slovenščina)',
+  'so': 'Somali (Soomaali)', // NEW
   'es': 'Spanish (Español)',
   'zh': 'Standard Chinese (Mandarin/普通话/Pǔtōnghuà)',
   'sw': 'Swahili (Kiswahili)',
   'ss': 'Swati (SiSwati)',
   'sv': 'Swedish (Svenska)',
   'tg': 'Tajik (тоҷикӣ)',
+  'ta': 'Tamil (தமிழ்)', // NEW
   'th': 'Thai (ภาษาไทย)',
   'ti': 'Tigrinya (ትግርኛ)',
   'tpi': 'Tok Pisin',
+  'tog': 'Tongan (Lea faka-Tonga)', // NEW (Used ISO 639-2 for Tonga)
   'ts': 'Tsonga (Xitsonga)',
   'tr': 'Turkish (Türkçe)',
+  'tk': 'Turkmen (Türkmençe)', // NEW
   'uk': 'Ukrainian (Українська)',
   'ur': 'Urdu (اردو)',
   'uz': 'Uzbek (Oʻzbekcha/Ўзбекча)',
   'vi': 'Vietnamese (Tiếng Việt)',
   'xh': 'Xhosa (isiXhosa)',
-  'zu': 'Zulu (isiZulu)',
+  'zu': 'Zulu (isiZulu)'
 };
 
 // ----------------------------------------------------------------------
@@ -104,9 +119,7 @@ const Map<String, String> _languageCodeToNameMap = {
 /// with the full name for the UI.
 final List<Language> allLanguages = _languageCodeToNameMap.entries
     .map((entry) => Language(code: entry.key, name: entry.value))
-    .toList()
-// Sort by display name for a better user experience
-  ..sort((a, b) => a.name.compareTo(b.name));
+    .toList();
 
 final Map<String, List<String>> countryLanguages = {
   'AF': ['Pashto', 'Dari'], // Afghanistan
