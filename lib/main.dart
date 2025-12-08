@@ -18,8 +18,6 @@ import 'login_page.dart'; // NEW: Import the login page
 import 'country_data.dart'; //
 import 'languages_dropdown.dart'; //
 
-import 'firebase_options.dart';
-
 void main() async { // ADDED async
   // Ensure we are ready to use Providers/Flutter bindings
   WidgetsFlutterBinding.ensureInitialized(); // ADDED
