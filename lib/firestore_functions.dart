@@ -26,7 +26,7 @@ class SourceLink {
 
   // Utility to combine title and URL for the NewsItemCard display
   @override
-  String toString() => '$linkTitle: $url';
+  String toString() => linkTitle;
 }
 
 // Model for a single news item
