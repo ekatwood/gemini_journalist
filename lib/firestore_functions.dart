@@ -103,7 +103,7 @@ class FirestoreFunctions {
           .collection('news_summaries')
       // 2. Filter by country and language
           .where('country', isEqualTo: countryCode)
-          .where('language', isEqualTo: languageCode)
+          .where('language', isEqualTo: 'English')
       // 3. Get the most recent document
           .orderBy('timestamp', descending: true)
           .limit(1)
@@ -116,11 +116,16 @@ class FirestoreFunctions {
 
       // 4. Extract the data from the single result
       final docData = snapshot.docs.first.data() as Map<String, dynamic>;
-      final List<dynamic> newsData = docData['news_data'] ?? []; // <--- Get the 'news_data' field
+      // CHANGE 1: Get the 'news_data' object
+      final Map<String, dynamic> newsDataObject = docData['news_data'] ?? {};
+      // CHANGE 2: Get the 'news_stories' list from the news_data object
+      final List<dynamic> newsDataList = newsDataObject['news_stories'] ?? [];
 
-      // 5. Map the list of JSON objects (from 'news_data') to NewsItem objects
-      final List<NewsItem> newsItems = newsData
+
+      // 5. Map the list of JSON objects (from 'news_stories') to NewsItem objects
+      final List<NewsItem> newsItems = newsDataList
           .whereType<Map<String, dynamic>>()
+      // CHANGE 3: Use the new list to map
           .map((itemData) => NewsItem.fromFirestore(itemData))
           .toList();
 

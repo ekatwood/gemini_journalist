@@ -24,8 +24,9 @@ void main() async { // ADDED async
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Using a stub initialization for now:
+
   if (kDebugMode) {
-    print('*** Firebase Initialized (Stub) ***');
+    print('*** Firebase Initialized ***');
   }
   // *** KEEP THIS FOR GLOBAL INITIALIZATION ***
   // await GoogleSignIn.instance.initialize(
@@ -37,13 +38,13 @@ void main() async { // ADDED async
   //   ),
   // );
 
-  await FirebaseAppCheck.instance.activate(
-    webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
-    // Default providers for mobile:
-    // Android: Play Integrity (recommended) or SafetyNet
-    // Apple: DeviceCheck (iOS 11+) or App Attest (iOS 14+)
-    // If you don't specify these, the SDK uses the default for the platform.
-  );
+  // await FirebaseAppCheck.instance.activate(
+  //   webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
+  //   // Default providers for mobile:
+  //   // Android: Play Integrity (recommended) or SafetyNet
+  //   // Apple: DeviceCheck (iOS 11+) or App Attest (iOS 14+)
+  //   // If you don't specify these, the SDK uses the default for the platform.
+  // );
 
   runApp(
     MultiProvider(
@@ -97,13 +98,17 @@ class _NewsHomePageState extends State<NewsHomePage> {
   List<NewsItem> _newsItems = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  // NEW: Flag to track initial fetch
+  bool _initialFetchDone = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // This is called when dependencies change, including on first build.
-    // We use a small Future.microtask to ensure the provider is ready.
-    Future.microtask(() => _fetchNews());
+    // CHANGE: Only fetch news on the FIRST time dependencies change (i.e., on initial build)
+    if (!_initialFetchDone) {
+      Future.microtask(() => _fetchNews());
+      _initialFetchDone = true;
+    }
   }
 
   // Stub for the GCF HTTP call (will be replaced with actual http calls upon deployment)
