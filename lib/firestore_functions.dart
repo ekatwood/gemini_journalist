@@ -118,8 +118,8 @@ class FirestoreFunctions {
       final docData = snapshot.docs.first.data() as Map<String, dynamic>;
       // CHANGE 1: Get the 'news_data' object
       final Map<String, dynamic> newsDataObject = docData['news_data'] ?? {};
-      // CHANGE 2: Get the 'news_stories' list from the news_data object
-      final List<dynamic> newsDataList = newsDataObject['news_stories'] ?? [];
+      // CHANGE 2: Get the 'news_items' list from the news_data object
+      final List<dynamic> newsDataList = newsDataObject['news_items'] ?? [];
 
 
       // 5. Map the list of JSON objects (from 'news_stories') to NewsItem objects
