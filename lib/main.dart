@@ -67,18 +67,63 @@ class GeminiJournalist extends StatelessWidget {
     final authProvider = Provider.of<ap.AuthProvider>(context);
     final firestoreFunctions = Provider.of<FirestoreFunctions>(context, listen: false);
 
+    // Custom Colors for the Newspaper Theme
+    // Parchment for Light Mode Background
+    const Color parchment = Color(0xFFFAF0E6); // A light, off-white beige
+
+    // Ink for Light Mode Text/Primary
+    const Color ink = Color(0xFF1E1E1E); // Very dark gray, almost black
+
+    // Dark Background for Dark Mode
+    const Color darkPaper = Color(0xFF121212); // Standard dark mode gray
+
+    // Off-White/Sepia for Dark Mode Text
+    const Color sepia = Color(0xFFEFECE9); // A soft, off-white
+
+    // *** NEW: Define the desired TextStyle for the body text ***
+    const TextStyle bodyTextStyle = TextStyle(fontSize: 16.0);
+
     return MaterialApp(
       title: 'Gemini Correspondent',
       // Use the theme from the AuthProvider
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        colorSchemeSeed: Colors.blue,
+        fontFamily: 'LibreBaskerville',
+        // Define a custom ColorScheme
+        colorScheme: const ColorScheme.light(
+          primary: ink, // Main elements (e.g., App Bar/Primary buttons)
+          secondary: ink, // Secondary elements
+          background: parchment, // **Main background color**
+          surface: parchment, // Card/Dialog backgrounds
+          onBackground: ink, // **Text color on the background**
+          onSurface: ink, // Text color on cards
+        ),
+        // Ensures the Scaffold background color uses the new background color
+        scaffoldBackgroundColor: parchment,
+        textTheme: TextTheme(
+          bodyMedium: bodyTextStyle.copyWith(color: ink),
+        ),
       ),
+      // --- DARK MODE THEME ---
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        colorSchemeSeed: Colors.blue,
+        fontFamily: 'LibreBaskerville',
+        // Define a custom ColorScheme
+        colorScheme: const ColorScheme.dark(
+          primary: sepia, // Main elements
+          secondary: sepia, // Secondary elements
+          background: darkPaper, // **Main background color**
+          surface: darkPaper, // Card/Dialog backgrounds
+          onBackground: sepia, // **Text color on the background**
+          onSurface: sepia, // Text color on cards
+        ),
+        // Ensures the Scaffold background color uses the new background color
+        scaffoldBackgroundColor: darkPaper,
+        textTheme: TextTheme(
+          bodyMedium: bodyTextStyle.copyWith(color: sepia),
+        ),
       ),
       themeMode: authProvider.themeMode,
       // CHANGE 1: Always show NewsHomePage, regardless of login status.
@@ -480,7 +525,7 @@ class NewsItemCard extends StatelessWidget {
                   source.toString(),
                   style: const TextStyle(
                     color: Colors.blue,
-                    decoration: TextDecoration.underline,
+                    //decoration: TextDecoration.underline,
                   ),
                 ),
               ),
