@@ -398,26 +398,70 @@ class _NewsHomePageState extends State<NewsHomePage> {
       // NEW ARGUMENT: A set of codes that should be highlighted/bolded.
       Set<String> highlightCodes,
       ) {
+
+    // 1. Separate the items into two lists, maintaining the original order
+    final List<MapEntry<String, String>> highlightedItems = [];
+    final List<MapEntry<String, String>> remainingItems = [];
+
+    // Iterate over the items in their original order (from the passed Map)
+    items.entries.forEach((entry) {
+      if (highlightCodes.contains(entry.key)) {
+        highlightedItems.add(entry);
+      } else {
+        remainingItems.add(entry);
+      }
+    });
+
+    // 2. Build the final list of DropdownMenuItem widgets
+    final List<DropdownMenuItem<String>> menuItems = [];
+
+    // Add Highlighted (Country-Specific) Languages (in original order)
+    menuItems.addAll(highlightedItems.map((entry) {
+      return DropdownMenuItem<String>(
+        value: entry.key,
+        child: Text(
+          entry.value,
+          style: null, //const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      );
+    }));
+
+    // Add the Divider if there are both highlighted languages AND other languages
+    if (highlightedItems.isNotEmpty && remainingItems.isNotEmpty) {
+      // A non-selectable DropdownMenuItem containing a Divider
+      menuItems.add(
+        const DropdownMenuItem<String>(
+          value: null, // Set value to null to prevent selection
+          enabled: false, // Crucial: Prevents interaction
+          child: Divider(
+            height: 1, // Minimize space
+            thickness: 1,
+          ),
+        ),
+      );
+    }
+
+    // Add Remaining Languages (in original order)
+    menuItems.addAll(remainingItems.map((entry) {
+      // Note: We don't need to check for highlighting again here.
+      return DropdownMenuItem<String>(
+        value: entry.key,
+        child: Text(
+          entry.value,
+          style: null, // Normal style
+        ),
+      );
+    }));
+
+
+    // 3. Return the final DropdownButton
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: currentValue,
         onChanged: onChanged,
         hint: Text(label),
-        items: items.entries.map((entry) {
-          // Check if the current language code is in the highlight set
-          final isHighlighted = highlightCodes.contains(entry.key);
-
-          return DropdownMenuItem<String>(
-            value: entry.key,
-            child: Text(
-              entry.value,
-              // Apply bold style if it's a highlighted language
-              style: isHighlighted
-                  ? const TextStyle(fontWeight: FontWeight.bold)
-                  : null,
-            ),
-          );
-        }).toList(),
+        // Use the newly constructed list of items
+        items: menuItems,
       ),
     );
   }
