@@ -11,6 +11,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_functions.dart'; // To create user profiles
 
+import 'languages_dropdown.dart' as ld;
+
 // Define 365 days expiration for long-lived preferences
 const _kLongCookieDuration = Duration(days: 365);
 // Define 1 week expiration for long-lived preferences
@@ -133,11 +135,34 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // MODIFIED: setCountryPreference
   void setCountryPreference(String countryCode) {
     if (_selectedCountryCode != countryCode) {
       _selectedCountryCode = countryCode;
-      // Set the cookie with 365-day expiration
-      _setCookie('selectedCountry', countryCode, maxAge: _kLongCookieDuration);
+
+      // 1. Get the list of language names for the new country
+      final List<String>? countryLanguageNames =
+      ld.countryLanguages[countryCode];
+
+      // 2. Determine the default language code
+      if (countryLanguageNames != null && countryLanguageNames.isNotEmpty) {
+        // Get the first language name (e.g., 'French' for 'FR')
+        final String defaultLanguageName = countryLanguageNames.first;
+
+        // Convert the name back to its code (e.g., 'fr') using the new map
+        final String? defaultLanguageCode =
+        ld.languageNameToCodeMap[defaultLanguageName];
+
+        if (defaultLanguageCode != null) {
+          // 3. Automatically set the language preference to the default
+          setLanguagePreference(defaultLanguageCode);
+          return; // Exit early if we set the language
+        }
+      }
+
+      // Fallback: If no language is found or the lookup fails, default to 'English'
+      setLanguagePreference('en');
+
       notifyListeners();
     }
   }
