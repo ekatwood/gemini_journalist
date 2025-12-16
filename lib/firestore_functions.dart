@@ -103,7 +103,7 @@ class FirestoreFunctions {
           .collection('news_summaries')
       // 2. Filter by country and language
           .where('country', isEqualTo: countryCode)
-          .where('language', isEqualTo: 'English')
+          .where('language', isEqualTo: languageCode)
       // 3. Get the most recent document
           .orderBy('timestamp', descending: true)
           .limit(1)

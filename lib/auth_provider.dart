@@ -142,6 +142,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // MODIFIED: setLanguagePreference
+  // NOTE: This now uses the local variable and does NOT set a cookie.
+  void setLanguagePreference(String languageCode) {
+    if (_selectedLanguageCode != languageCode) {
+      _selectedLanguageCode = languageCode;
+      // *** REMOVED: Cookie setting logic here ***
+      // We also need to clear the translation cache when language changes
+      // to ensure a fresh fetch/translation happens.
+      _deleteCookie('currentTranslatedText');
+      _deleteCookie('lastCacheTime');
+      notifyListeners();
+    }
+  }
+
   // --- Current Translated Text Management (1-day cookie) ---
 
   void setCachedTranslatedData(String translatedData) {

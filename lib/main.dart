@@ -70,17 +70,13 @@ class GeminiJournalist extends StatelessWidget {
     // Custom Colors for the Newspaper Theme
     // Parchment for Light Mode Background
     const Color parchment = Color(0xFFFAF0E6); // A light, off-white beige
-
     // Ink for Light Mode Text/Primary
     const Color ink = Color(0xFF1E1E1E); // Very dark gray, almost black
-
     // Dark Background for Dark Mode
     const Color darkPaper = Color(0xFF121212); // Standard dark mode gray
-
     // Off-White/Sepia for Dark Mode Text
     const Color sepia = Color(0xFFEFECE9); // A soft, off-white
-
-    // *** NEW: Define the desired TextStyle for the body text ***
+    // Define the desired TextStyle for the body text
     const TextStyle bodyTextStyle = TextStyle(fontSize: 16.0);
 
     return MaterialApp(
@@ -148,8 +144,10 @@ class _NewsHomePageState extends State<NewsHomePage> {
 
   @override
   void didChangeDependencies() {
+    if(kDebugMode) print('didChangeDependencies()');
+
     super.didChangeDependencies();
-    // CHANGE: Only fetch news on the FIRST time dependencies change (i.e., on initial build)
+    // Only fetch news on the FIRST time dependencies change (i.e., on initial build)
     if (!_initialFetchDone) {
       Future.microtask(() => _fetchNews());
       _initialFetchDone = true;
@@ -367,9 +365,9 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   ),
                       (String? newValue) {
                     if (newValue != null) {
-                      //authProvider.setLanguagePreference(newValue);
-                      // TODO: just do a _translateText() function
-                      //_fetchNews(); // Re-fetch data on preference change
+                      // TODO: translate if it is not already in db
+                      authProvider.setLanguagePreference(newValue);
+                      _fetchNews(); // Re-fetch data on preference change
                     }
                   },
                   // Pass the calculated set of highlighted codes!
