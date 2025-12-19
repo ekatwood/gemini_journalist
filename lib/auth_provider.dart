@@ -276,7 +276,9 @@ class AuthProvider extends ChangeNotifier {
   // --- REMOVED: signInWithGoogle method (Logic now resides in GoogleSignInScreen) ---
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    if(kDebugMode) print('Future<void> signOut() async in auth_provider.dart');
+
+    //await _googleSignIn.signOut();
     await _auth.signOut();
     _currentUser = null;
     _isLoggedIn = false;
