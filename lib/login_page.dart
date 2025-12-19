@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth_provider.dart';
-import 'gmail_login.dart'; // <<< ADDED IMPORT
+import 'gmail_login.dart';
 
 enum AuthMode { login, register }
 
@@ -16,6 +16,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController(); // NEW: Controller for mandatory name
   AuthMode _authMode = AuthMode.login;
   String? _errorMessage;
   bool _isLoading = false;
@@ -24,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose(); // NEW: Dispose name controller
     super.dispose();
   }
 
@@ -35,8 +37,12 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _submit() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      setState(() => _errorMessage = 'Please enter both email and password.');
+    // UPDATED: Validation logic to include name during registration
+    final isRegistering = _authMode == AuthMode.register;
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        (isRegistering && _nameController.text.trim().isEmpty)) {
+      setState(() => _errorMessage = 'Please fill in all mandatory fields.');
       return;
     }
 
@@ -50,29 +56,35 @@ class _LoginPageState extends State<LoginPage> {
     try {
       if (_authMode == AuthMode.login) {
         await authProvider.signInWithEmailAndPassword(
-          _emailController.text,
-          _passwordController.text,
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
         );
       } else {
+        // UPDATED: Pass the name to the registration method
         await authProvider.registerWithEmailAndPassword(
-          _emailController.text,
-          _passwordController.text,
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          _nameController.text.trim(),
         );
+      }
+
+      // NEW: Success! Pop back to the main page
+      if (mounted) {
+        Navigator.of(context).pop();
       }
     } catch (e) {
       setState(() {
-        // Use a friendly message instead of the raw error
         _errorMessage = 'Authentication Failed. Please check your credentials.';
         _isLoading = false;
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-
-  // --- REMOVED: _signInWithGoogle method ---
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +111,20 @@ class _LoginPageState extends State<LoginPage> {
                     style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
+
+                  // NEW: Mandatory Name Input (Only visible during registration)
+                  if (!isLogin) ...[
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        prefixIcon: const Icon(Icons.person),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 15),
+                  ],
 
                   // Email Input
                   TextField(
@@ -158,23 +184,23 @@ class _LoginPageState extends State<LoginPage> {
                   const Text('OR'),
                   const SizedBox(height: 20),
 
-                  // Google Sign-In Button (Now navigates to the dedicated screen)
+                  // Google Sign-In Button
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Navigates to the dedicated Google Sign-In Screen
-                        Navigator.of(context).push(
+                      onPressed: () async {
+                        // Navigate to dedicated screen and wait for result
+                        await Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => const GoogleSignInScreen()),
                         );
+
+                        // Check if the user is now logged in via Google, then pop
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        if (auth.isLoggedIn && mounted) {
+                          Navigator.of(context).pop();
+                        }
                       },
-                      icon: Image.asset(
-                        'assets/google_logo.png', // Placeholder for Google logo asset
-                        height: 24.0,
-                        width: 24.0,
-                        errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.g_mobiledata), // Fallback icon
-                      ),
+                      icon: const Icon(Icons.g_mobiledata),
                       label: const Text('Sign In with Google'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 15),

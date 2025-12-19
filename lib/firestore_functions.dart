@@ -70,14 +70,13 @@ class NewsItem {
 class FirestoreFunctions {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> createUserProfile(User user) async {
+  Future<void> createUserProfile(User user, {String? manualName}) async {
     final userDocRef = _firestore.collection('users').doc(user.uid);
 
     final userData = {
       'uid': user.uid,
       'email': user.email,
-      'displayName': user.displayName,
-      'photoURL': user.photoURL,
+      'displayName': manualName ?? user.displayName ?? user.email?.split('@').first,
       'lastSignInTime': FieldValue.serverTimestamp(),
       // Add any other default profile data here
     };

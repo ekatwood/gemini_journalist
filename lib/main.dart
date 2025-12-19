@@ -285,8 +285,9 @@ class _NewsHomePageState extends State<NewsHomePage> {
     // *** NEW LOGIC ENDS HERE ***
 
     // Get display name for personalized greeting
-    final displayName = isLoggedIn ? (authProvider.currentUser?.displayName ?? authProvider.currentUser?.email ?? 'User') : 'Guest';
-
+    final String displayName = isLoggedIn
+        ? (authProvider.currentUser?.displayName ?? authProvider.currentUser?.email?.split('@').first ?? 'User')
+        : 'Guest';
 
     return Scaffold(
       appBar: AppBar(

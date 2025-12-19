@@ -224,11 +224,9 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadCurrentUser() async {
     _currentUser = _auth.currentUser;
     _isLoggedIn = _currentUser != null;
-    // If user is logged in, create/update profile
     if (_isLoggedIn) {
-      // Direct use of _firestoreFunctions instance
+      // Profile creation logic in FirestoreFunctions now excludes photoURL
       await _firestoreFunctions.createUserProfile(_currentUser!);
-      // NOTE: Assume createUserProfile handles setting/resetting 'numTranslations' to 0 for the day.
     }
     notifyListeners();
   }
@@ -253,19 +251,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // NEW: Add registerWithEmailAndPassword for the LoginPage
-  Future<void> registerWithEmailAndPassword(String email, String password) async {
+  Future<void> registerWithEmailAndPassword(String email, String password, String name) async {
     try {
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      _currentUser = userCredential.user;
-      _isLoggedIn = _currentUser != null;
 
-      if (_isLoggedIn) {
-        await _firestoreFunctions.createUserProfile(_currentUser!);
+      _currentUser = userCredential.user;
+
+      if (_currentUser != null) {
+        // Update the Firebase Auth profile name immediately
+        await _currentUser!.updateDisplayName(name);
+        // Sync to Firestore using the manual name
+        await _firestoreFunctions.createUserProfile(_currentUser!, manualName: name);
       }
+
+      _isLoggedIn = _currentUser != null;
       notifyListeners();
     } catch (e) {
       print('Email/Password Registration Failed: $e');
