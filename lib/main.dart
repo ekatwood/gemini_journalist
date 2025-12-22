@@ -28,15 +28,10 @@ void main() async { // ADDED async
   if (kDebugMode) {
     print('*** Firebase Initialized ***');
   }
-  // *** KEEP THIS FOR GLOBAL INITIALIZATION ***
-  // await GoogleSignIn.instance.initialize(
-  //   configuration: const SignInConfiguration(
-  //     scopes: <String>[
-  //       'email',
-  //       'profile',
-  //     ],
-  //   ),
-  // );
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: '456847228079-enj45rc02ve2bo3l6c86ug7rvgehplsj.apps.googleusercontent.com', // Required for Web
+    scopes: <String>['email'],
+  );
 
   // await FirebaseAppCheck.instance.activate(
   //   webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
