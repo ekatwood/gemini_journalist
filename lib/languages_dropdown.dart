@@ -26,16 +26,16 @@ const Map<String, String> languageCodeToNameMap = {
   'ca': 'Catalan (Català)',
   'ny': 'Chichewa (Chicheŵa)',
   'hr': 'Croatian (Hrvatski)',
-  'da': 'Danish (Dansk)', // Missing in initial map but added for completeness
-  'prs': 'Dari (دری)',
+  'da': 'Danish (Dansk)',
+  'fa-AF': 'Dari (دری)',
   'dv': 'Dhivehi (ދިވެހި)',
   'nl': 'Dutch (Nederlands)',
-  'dz': 'Dzongkha (རྫོང་ཁ)', // NEW
+  'dz': 'Dzongkha (རྫོང་ཁ)',
   'en': 'English',
   'et': 'Estonian (Eesti)',
   'fa': 'Farsi (Persian) (فارسی)',
   'fj': 'Fijian (Vosa Vakaviti)',
-  'fil': 'Filipino (Wikang Filipino)',
+  'tl': 'Filipino (Wikang Filipino)',
   'fi': 'Finnish (Suomi)',
   'fr': 'French (Français)',
   'ka': 'Georgian (ქართული)',
@@ -45,9 +45,7 @@ const Map<String, String> languageCodeToNameMap = {
   'ht': 'Haitian Creole (Kreyòl Ayisyen)',
   'iw': 'Hebrew (עברית)',
   'hi': 'Hindi',
-  'ho': 'Hiri Motu', // NEW (Used ISO 639-2)
-  'hnd': 'Hindustani', // NEW (General term, used a descriptive code)
-  'hu': 'Hungarian (Magyar)', // Missing in initial map but added for completeness
+  'hu': 'Hungarian (Magyar)',
   'is': 'Icelandic (Íslenska)',
   'id': 'Indonesian (Bahasa Indonesia)',
   'ga': 'Irish (Gaeilge)',
@@ -55,23 +53,22 @@ const Map<String, String> languageCodeToNameMap = {
   'ja': 'Japanese (日本語)',
   'kk': 'Kazakh (Қазақ тілі)',
   'km': 'Khmer (ភាសាខ្មែរ)',
-  'rw': 'Kinyarwanda (Ikinyarwanda)', // NEW
+  'rw': 'Kinyarwanda (Ikinyarwanda)',
   'ko': 'Korean (한국어)',
   'ku': 'Kurdish (Kurdî)',
-  'ky': 'Kyrgyz (Кыргызча)', // Missing in initial map but added for completeness
+  'ky': 'Kyrgyz (Кыргызча)',
   'lo': 'Lao (ພາສາລາວ)',
   'la': 'Latin (Latina)',
   'lv': 'Latvian (Latviešu valoda)',
   'lt': 'Lithuanian (Lietuvių kalba)',
   'lb': 'Luxembourgish (Lëtzebuergesch)',
-  'mk': 'Macedonian (Македонски)', // NEW
+  'mk': 'Macedonian (Македонски)',
   'mi': 'Māori (Te reo Māori)',
   'mg': 'Malagasy (Malagasy)',
   'ms': 'Malay (Bahasa Melayu)',
   'mt': 'Maltese (Malti)',
   'mh': 'Marshallese (Kajin M̧ajeļ)',
   'mn': 'Mongolian (Монгол хэл)',
-  'sr': 'Montenegrin (Crnogorski/Црногорски)',
   'ne': 'Nepali (नेपाली)',
   'no': 'Norwegian (Norsk)',
   'ps': 'Pashto (پښتو)',
@@ -80,29 +77,28 @@ const Map<String, String> languageCodeToNameMap = {
   'qu': 'Quechua (Runa Simi)',
   'ro': 'Romanian (Română)',
   'ru': 'Russian (Русский)',
-  'sm': 'Samoan (Gagana Sāmoa)', // NEW
-  'srp': 'Serbian (Srpski/Српски)', // NEW (Used ISO 639-3 to avoid collision with Montenegrin, which was mapped to 'sr')
-  'sco': 'Seychellois Creole (Seselwa)', // NEW
+  'sm': 'Samoan (Gagana Sāmoa)',
+  'sr': 'Serbian (Srpski/Српски)',
+  'crs': 'Seychellois Creole (Seselwa)',
   'st': 'Sesotho (Sesotho)',
   'tn': 'Setswana (Setswana)',
   'sn': 'Shona (chiShona)',
   'sk': 'Slovak (Slovenčina)',
   'sl': 'Slovene (Slovenščina)',
-  'so': 'Somali (Soomaali)', // NEW
+  'so': 'Somali (Soomaali)',
   'es': 'Spanish (Español)',
   'zh': 'Standard Chinese (Mandarin/普通话/Pǔtōnghuà)',
   'sw': 'Swahili (Kiswahili)',
   'ss': 'Swati (SiSwati)',
   'sv': 'Swedish (Svenska)',
   'tg': 'Tajik (тоҷикӣ)',
-  'ta': 'Tamil (தமிழ்)', // NEW
+  'ta': 'Tamil (தமிழ்)',
   'th': 'Thai (ภาษาไทย)',
   'ti': 'Tigrinya (ትግርኛ)',
-  'tpi': 'Tok Pisin',
-  'tog': 'Tongan (Lea faka-Tonga)', // NEW (Used ISO 639-2 for Tonga)
+  'to': 'Tongan (Lea faka-Tonga)',
   'ts': 'Tsonga (Xitsonga)',
   'tr': 'Turkish (Türkçe)',
-  'tk': 'Turkmen (Türkmençe)', // NEW
+  'tk': 'Turkmen (Türkmençe)',
   'uk': 'Ukrainian (Українська)',
   'ur': 'Urdu (اردو)',
   'uz': 'Uzbek (Oʻzbekcha/Ўзбекча)',
@@ -188,7 +184,7 @@ final Map<String, List<String>> countryLanguages = {
   'EE': ['Estonian'], // Estonia
   'SZ': ['English'], // Eswatini
   'ET': ['Amharic'], // Ethiopia
-  'FJ': ['Fijian', 'English', 'Hindustani'], // Fiji
+  'FJ': ['Fijian', 'English', 'Urdu'], // Fiji
   'FI': ['Finnish', 'Swedish'], // Finland
   'FR': ['French'], // France
   'GA': ['French'], // Gabon
@@ -247,7 +243,7 @@ final Map<String, List<String>> countryLanguages = {
   'MD': ['Romanian'], // Moldova (Republic of)
   'MC': ['French'], // Monaco
   'MN': ['Mongolian'], // Mongolia
-  'ME': ['Montenegrin'], // Montenegro
+  'ME': ['Serbian'], // Montenegro
   'MA': ['Arabic', 'Berber'], // Morocco
   'MZ': ['Portuguese'], // Mozambique
   'MM': ['Burmese'], // Myanmar
@@ -266,7 +262,7 @@ final Map<String, List<String>> countryLanguages = {
   'PW': ['English'], // Palau
   'PS': ['Arabic'], // Palestine (State of)
   'PA': ['Spanish'], // Panama
-  'PG': ['Tok Pisin', 'English', 'Hiri Motu'], // Papua New Guinea
+  'PG': ['English'], // Papua New Guinea
   'PY': ['Spanish', 'Guaraní'], // Paraguay
   'PE': ['Spanish'], // Peru
   'PH': ['Filipino', 'English'], // Philippines
