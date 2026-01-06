@@ -3,6 +3,7 @@ import json
 import re
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 # Import for the Google GenAI SDK and types
 from google import genai
@@ -47,9 +48,31 @@ except Exception as e:
             )
     gemini_client = GeminiClientMock()
 
+# Strip links down to their base url
+def get_base_url(url: str):
+    """
+    Strips a URL down to just the scheme and domain.
+    Example: 'https://apnews.com/article/123' -> 'https://apnews.com'
+    """
+    try:
+        parts = urlparse(url)
+        # Combine scheme (https) and netloc (apnews.com)
+        # We also strip 'www.' here to keep the UI clean
+        base = f"{parts.scheme}://{parts.netloc.replace('www.', '')}"
+
+        # If for some reason the URL was mangled and has no scheme,
+        # urlparse might return an empty string for scheme.
+        if not parts.scheme:
+            return f"https://{parts.netloc.replace('www.', '')}"
+
+        return base
+    except Exception:
+        # If anything goes wrong, return the original URL so we don't lose data
+        return url
+
 # --- NEW: RETRY CONFIGURATION ---
-MAX_RETRIES = 5
-INITIAL_WAIT_TIME = 5 # seconds
+MAX_RETRIES = 20
+INITIAL_WAIT_TIME = 10 # seconds
 
 def safe_json_load(text: str):
     """
@@ -94,12 +117,13 @@ def fetch_and_store_news(country: str, languages: list):
 
         # 2. Define the System Instruction for the current language
         system_instruction = (
-            f"You are a helpful news curator. Your task is to provide the requested information. "
+            f"You are a helpful news curator. Your task is to provide 10 current individual news stories, if possible. "
             f"**Your entire response MUST be a single valid JSON structure (with fields title, summary, and sources(link_title, url)) wrapped in ```json ... ``` code fences.** "
-            f"Ensure all output text is in the {lang} language. "
+            f"Call the JSON news_items."
+            f"Ensure all output text is in the {lang} language."
             f"Use the search tool to find authoritative and up-to-date sources and include them in the 'sources' array."
-            f"Make sure to link to the original news article that is being referenced on its website."
-            f"Do not include news that is over 1 week old. If that means there are not 10 total news headlines, that is OK."
+            f"Do not add anything after the base url for the source. For example: https://apnews.com/<DO NOT ADD ANYTHING HERE>"
+            f"Do not use any article that is more than 1 week old."
         )
 
 
@@ -145,17 +169,26 @@ def fetch_and_store_news(country: str, languages: list):
                 # Check for 503 UNAVAILABLE (or other transient errors like 500)
                 if ("503 UNAVAILABLE" in error_message or "500 INTERNAL_SERVER_ERROR" in error_message) and attempt < MAX_RETRIES - 1:
                     print(f"⚠️ Attempt {attempt + 1}/{MAX_RETRIES} failed with 503/500. Retrying in {current_wait_time} seconds...")
+                    print(f"{error_message}")
                     time.sleep(current_wait_time)
                     current_wait_time *= 2  # Exponential backoff
                 else:
                     # Handle non-retryable errors (e.g., Auth, Invalid Argument, or max retries hit)
                     print(f"❌ A persistent error occurred for {lang}: {e}")
+
+                    # LOG TO FIRESTORE
+                    log_query_error_to_firestore(country, lang, error_msg)
+
                     results[lang] = {"status": "error", "message": error_message}
                     return results # Exit the language loop on a persistent error
 
         # Check if the retry loop failed to get a response
         if not response:
             print(f"❌ Max retries reached for {country} in {lang}. Skipping.")
+
+            # LOG TO FIRESTORE
+            log_query_error_to_firestore(country, lang, "response empty")
+
             return results
 
         # --- END OF RETRY LOGIC (New) ---
@@ -167,11 +200,32 @@ def fetch_and_store_news(country: str, languages: list):
         if not news_items:
             error_msg = "Model returned no text (response was empty or blocked). This is the cause of the 'NoneType' error."
             print(f"❌ An error occurred for {lang}: {error_msg}")
+
+            # LOG TO FIRESTORE
+            log_query_error_to_firestore(country, lang, error_msg)
+
             results[lang] = {"status": "error", "message": error_msg}
             continue # Move to the next language
 
+        # --- STRIP URLS TO BASE ---
+        # Based on your format: {'news_items': [{'title': '...', 'sources': [...]}]}
+        if isinstance(news_items, dict) and 'news_items' in news_items:
+            print("stripping urls")
+            for item in news_items['news_items']:
+                if 'sources' in item:
+                    for source in item['sources']:
+                        if 'url' in source:
+                            print(source['url'])
+                            source['url'] = get_base_url(source['url'])
+                            print(source['url'])
+        # ---------------------------
+
         try:
             # 6. Prepare data for Firestore
+            if (lang == "English"):
+                lang = "en"
+            if (lang == "Spanish"):
+                lang = "es"
             firestore_data = {
                 "country": country,
                 "language": lang,
@@ -190,21 +244,48 @@ def fetch_and_store_news(country: str, languages: list):
             # Handle JSON parsing specific errors
             error_msg = f"JSON Decode Error: {e}. Raw text was: {json.dumps(raw_text, indent=2)}..."
             print(f"❌ An error occurred during JSON parsing for {lang}: {error_msg}")
+
+            # LOG TO FIRESTORE
+            log_query_error_to_firestore(country, lang, error_msg)
+
             results[lang] = {"status": "error", "message": error_msg}
         except ValueError as e:
             # Handle the specific ValueError we raised for empty json_text
             print(f"❌ An error occurred for {lang}: {e}")
+
+            # LOG TO FIRESTORE
+            log_query_error_to_firestore(country, lang, str(e))
+
             results[lang] = {"status": "error", "message": str(e)}
         except Exception as e:
             # Catch any other unexpected exceptions during processing/Firestore upload
             print(f"❌ An unexpected error occurred for {lang}: {e}")
+
+            # LOG TO FIRESTORE
+            log_query_error_to_firestore(country, lang, str(e))
+
             results[lang] = {"status": "error", "message": str(e)}
 
     return results
 
+def log_query_error_to_firestore(country, lang, error_message):
+    """Logs a persistent query error to a specific Firestore collection."""
+    try:
+        error_data = {
+            "country": country,
+            "language": lang,
+            "error_message": error_message,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "persistent_failure"
+        }
+        db.collection("gemini_query_errors").add(error_data)
+        print(f"⚠️ Error logged to Firestore for {country}/{lang}")
+    except Exception as firestore_e:
+        print(f"❌ Failed to log error to Firestore: {firestore_e}")
+
 # --- EXAMPLE USAGE ---
 if __name__ == '__main__':
-    COUNTRY_TO_SEARCH = "United States of America"
+    COUNTRY_TO_SEARCH = "US"
     TARGET_LANGUAGES = ["English", "Spanish"]
 
     print(f"Starting news fetcher for {COUNTRY_TO_SEARCH} in {TARGET_LANGUAGES}...")
