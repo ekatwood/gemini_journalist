@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart'; // For kIsWeb and kDebugMode
 
 // Firebase Imports
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_functions.dart'; // To create user profiles
 
 import 'languages_dropdown.dart' as ld;
@@ -27,9 +26,6 @@ class AuthProvider extends ChangeNotifier {
 
   // Firebase Auth variables
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  User? _currentUser;
-  bool _isLoggedIn = false; // Derived from _currentUser != null
 
   // Theme variables
   ThemeMode _themeMode = ThemeMode.system;
@@ -39,15 +35,8 @@ class AuthProvider extends ChangeNotifier {
   String get selectedLanguageCode => _selectedLanguageCode;
   ThemeMode get themeMode => _themeMode;
 
-  bool get isLoggedIn => _isLoggedIn;
-  User? get currentUser => _currentUser;
-
-  // NEW Getter for current translated text (1-day cache)
-  String? get getCachedTranslatedData => _getCookie('currentTranslatedText');
-
   // Dependency: Now using a local instance of FirestoreFunctions
   final FirestoreFunctions _firestoreFunctions = FirestoreFunctions();
-
 
   // --- Geolocation Helper (Unchanged) ---
   Future<String> _fetchCountryCodeFromIP() async {
@@ -167,123 +156,15 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // MODIFIED: setLanguagePreference
-  // NOTE: This now uses the local variable and does NOT set a cookie.
   void setLanguagePreference(String languageCode) {
     if (_selectedLanguageCode != languageCode) {
       _selectedLanguageCode = languageCode;
-      // *** REMOVED: Cookie setting logic here ***
-      // We also need to clear the translation cache when language changes
-      // to ensure a fresh fetch/translation happens.
-      _deleteCookie('currentTranslatedText');
-      _deleteCookie('lastCacheTime');
       notifyListeners();
     }
-  }
-
-  // --- Current Translated Text Management (1-day cookie) ---
-
-  void setCachedTranslatedData(String translatedData) {
-    if (!kIsWeb) return;
-    // Set the cookie with 1-day expiration
-    _setCookie('currentTranslatedText', translatedData, maxAge: _kDailyCookieDuration);
-    notifyListeners();
-  }
-  // --- Last Cache Time Management ---
-
-  // Getter for the last cache time
-  DateTime? get lastCacheTime {
-    final String? timeString = _getCookie('lastCacheTime');
-    if (timeString != null) {
-      try {
-        return DateTime.parse(timeString);
-      } catch (e) {
-        print('Error parsing cached date: $e');
-        return null;
-      }
-    }
-    return null;
-  }
-
-  void setLastCacheTime(DateTime time) {
-    if (!kIsWeb) return;
-    // Set a separate cookie for the time, using the long duration as the cache is cleared by data set
-    _setCookie('lastCacheTime', time.toIso8601String(), maxAge: _kDailyCookieDuration);
-    notifyListeners(); // Notify listeners of the time change (optional, but good practice)
   }
 
   // --- Constructor ---
   AuthProvider() {
     _loadThemePreference();
     _loadCountryPreference();
-    _loadCurrentUser(); // Load Firebase user on startup
   }
-
-  // --- Firebase Auth Methods ---
-
-  Future<void> _loadCurrentUser() async {
-    _currentUser = _auth.currentUser;
-    _isLoggedIn = _currentUser != null;
-    if (_isLoggedIn) {
-      // Profile creation logic in FirestoreFunctions now excludes photoURL
-      await _firestoreFunctions.createUserProfile(_currentUser!);
-    }
-    notifyListeners();
-  }
-
-  // NEW: Add signInWithEmailAndPassword for the LoginPage
-  Future<void> signInWithEmailAndPassword(String email, String password) async {
-    try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _currentUser = userCredential.user;
-      _isLoggedIn = _currentUser != null;
-
-      if (_isLoggedIn) {
-        await _firestoreFunctions.createUserProfile(_currentUser!);
-      }
-      notifyListeners();
-    } catch (e) {
-      print('Email/Password Sign-In Failed: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> registerWithEmailAndPassword(String email, String password, String name) async {
-    try {
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      _currentUser = userCredential.user;
-
-      if (_currentUser != null) {
-        // Update the Firebase Auth profile name immediately
-        await _currentUser!.updateDisplayName(name);
-        // Sync to Firestore using the manual name
-        await _firestoreFunctions.createUserProfile(_currentUser!, manualName: name);
-      }
-
-      _isLoggedIn = _currentUser != null;
-      notifyListeners();
-    } catch (e) {
-      print('Email/Password Registration Failed: $e');
-      rethrow;
-    }
-  }
-
-  // --- REMOVED: signInWithGoogle method (Logic now resides in GoogleSignInScreen) ---
-
-  Future<void> signOut() async {
-    if(kDebugMode) print('Future<void> signOut() async in auth_provider.dart');
-
-    //await _googleSignIn.signOut();
-    await _auth.signOut();
-    _currentUser = null;
-    _isLoggedIn = false;
-    notifyListeners();
-  }
-}

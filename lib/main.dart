@@ -14,7 +14,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_options.dart';
 import 'firestore_functions.dart';
 import 'auth_provider.dart' as ap;
-import 'login_page.dart'; // NEW: Import the login page
 import 'country_data.dart'; //
 import 'languages_dropdown.dart'; //
 
