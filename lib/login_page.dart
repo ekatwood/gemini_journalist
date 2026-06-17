@@ -181,33 +181,33 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 20),
 
                   // Separator
-                  const Text('OR'),
-                  const SizedBox(height: 20),
+                  // const Text('OR'),
+                  // const SizedBox(height: 20),
 
                   // Google Sign-In Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        // Navigate to dedicated screen and wait for result
-                        await Navigator.of(context).push(
-                          MaterialPageRoute(builder: (context) => const GoogleSignInScreen()),
-                        );
-
-                        // Check if the user is now logged in via Google, then pop
-                        final auth = Provider.of<AuthProvider>(context, listen: false);
-                        if (auth.isLoggedIn && mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      },
-                      icon: const Icon(Icons.g_mobiledata),
-                      label: const Text('Sign In with Google'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   child: OutlinedButton.icon(
+                  //     onPressed: () async {
+                  //       // Navigate to dedicated screen and wait for result
+                  //       await Navigator.of(context).push(
+                  //         MaterialPageRoute(builder: (context) => const GoogleSignInScreen()),
+                  //       );
+                  //
+                  //       // Check if the user is now logged in via Google, then pop
+                  //       final auth = Provider.of<AuthProvider>(context, listen: false);
+                  //       if (auth.isLoggedIn && mounted) {
+                  //         Navigator.of(context).pop();
+                  //       }
+                  //     },
+                  //     icon: const Icon(Icons.g_mobiledata),
+                  //     label: const Text('Sign In with Google'),
+                  //     style: OutlinedButton.styleFrom(
+                  //       padding: const EdgeInsets.symmetric(vertical: 15),
+                  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 20),
 
                   // Switch Auth Mode Link

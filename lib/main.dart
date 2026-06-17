@@ -28,18 +28,6 @@ void main() async { // ADDED async
   if (kDebugMode) {
     print('*** Firebase Initialized ***');
   }
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '456847228079-enj45rc02ve2bo3l6c86ug7rvgehplsj.apps.googleusercontent.com', // Required for Web
-    scopes: <String>['email'],
-  );
-
-  // await FirebaseAppCheck.instance.activate(
-  //   webProvider: ReCaptchaV3Provider('6LdaJhgsAAAAACbrnKZ_V1CgxHVFX9dQBzrFx49F'),
-  //   // Default providers for mobile:
-  //   // Android: Play Integrity (recommended) or SafetyNet
-  //   // Apple: DeviceCheck (iOS 11+) or App Attest (iOS 14+)
-  //   // If you don't specify these, the SDK uses the default for the platform.
-  // );
 
   runApp(
     MultiProvider(
@@ -286,38 +274,28 @@ class _NewsHomePageState extends State<NewsHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Welcome, $displayName!'), // Personalized title
+        // Centers the logo in the AppBar
+        centerTitle: true,
+
+        title: ClipRRect(
+          borderRadius: BorderRadius.circular(5.6), // Adjust the radius for more/less rounding
+          child: Image.asset(
+            'assets/logo.png', // Make sure to match your actual asset path
+            height: 54,        // Adjust height to fit your AppBar nicely
+            fit: BoxFit.contain,
+          ),
+        ),
         actions: [
-          // Theme Toggle
+          // Theme Toggle stays floating on the right
           IconButton(
             icon: Icon(
-              authProvider.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
+              // Check the actual resolved brightness of the application context
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
             ),
             onPressed: authProvider.toggleThemeMode,
           ),
-
-          // CHANGE 2: Conditional Login/Logout Button
-          if (isLoggedIn)
-          // Show Logout button if logged in
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Sign Out',
-              onPressed: () async {
-                await authProvider.signOut();
-              },
-            )
-          else
-          // Show Sign In button if not logged in
-            TextButton.icon(
-              icon: const Icon(Icons.login),
-              label: const Text('Sign In'),
-              onPressed: () {
-                // Navigate to the Login Page using push (or pushReplacement for a clean stack)
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
-              },
-            ),
         ],
       ),
       body: Column(
