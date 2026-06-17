@@ -32,7 +32,9 @@ class AuthProvider extends ChangeNotifier {
 
   // --- Getters ---
   String get selectedCountryCode => _selectedCountryCode;
+
   String get selectedLanguageCode => _selectedLanguageCode;
+
   ThemeMode get themeMode => _themeMode;
 
   // Dependency: Now using a local instance of FirestoreFunctions
@@ -93,7 +95,8 @@ class AuthProvider extends ChangeNotifier {
 
   void _deleteCookie(String name) {
     if (!kIsWeb) return;
-    html.document.cookie = '$name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    html.document.cookie =
+    '$name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
   }
 
   // --- Theme Preference Management (Unchanged) ---
@@ -110,8 +113,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void toggleThemeMode() {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    _setCookie('themePreference', _themeMode == ThemeMode.dark ? 'dark' : 'light');
+    _themeMode =
+    _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _setCookie(
+        'themePreference', _themeMode == ThemeMode.dark ? 'dark' : 'light');
     notifyListeners();
   }
 
@@ -168,3 +173,4 @@ class AuthProvider extends ChangeNotifier {
     _loadThemePreference();
     _loadCountryPreference();
   }
+}

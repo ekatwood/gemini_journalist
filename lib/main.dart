@@ -120,8 +120,10 @@ class _NewsHomePageState extends State<NewsHomePage> {
   List<NewsItem> _newsItems = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  // NEW: Flag to track initial fetch
   bool _initialFetchDone = false;
+
+  // NEW: Track the currently selected category
+  String _selectedCategory = 'Headlines';
 
   @override
   void didChangeDependencies() {
@@ -270,6 +272,49 @@ class _NewsHomePageState extends State<NewsHomePage> {
                   countryLanguageCodes,
                 ),
               ],
+            ),
+          ),
+
+          // --- NEW: Category Buttons Section ---
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Row(
+              children: [
+                'Headlines',
+                'Business and Markets',
+                'Politics',
+                'Art and Culture',
+                'Sports',
+                'Science and Technology'
+              ].map((category) {
+                final isSelected = _selectedCategory == category;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: FilterChip(
+                    label: Text(category),
+                    selected: isSelected,
+                    showCheckmark: false,
+                    // Force the background to use your primary ink color when selected
+                    selectedColor: Theme.of(context).colorScheme.primary,
+                    // Update the text color dynamically based on selection state
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.background // Light text when selected
+                          : Theme.of(context).colorScheme.onBackground, // Dark text when unselected
+                      //fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    onSelected: (bool selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                        // TODO: query and display news items for this category
+                      }
+                    },
+                  )
+                );
+              }).toList(),
             ),
           ),
 
