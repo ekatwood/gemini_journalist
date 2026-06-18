@@ -70,31 +70,10 @@ class NewsItem {
 class FirestoreFunctions {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> createUserProfile(User user, {String? manualName}) async {
-    final userDocRef = _firestore.collection('users').doc(user.uid);
-
-    final userData = {
-      'uid': user.uid,
-      'email': user.email,
-      'displayName': manualName ?? user.displayName ?? user.email?.split('@').first,
-      'lastSignInTime': FieldValue.serverTimestamp(),
-      // Add any other default profile data here
-    };
-
-    // Use set with merge: true to create the document if it doesn't exist,
-    // or update the sign-in time if it does.
-    try {
-      await userDocRef.set(userData, SetOptions(merge: true));
-      print('User profile created/updated for ${user.email}');
-    } catch (e) {
-      print('Error creating user profile in Firestore: $e');
-      rethrow;
-    }
-  }
-
   // This will be called to get the news items from the database
-  Future<List<NewsItem>> fetchNewsItems(String countryCode, String languageCode) async {
-    print('Fetching news for $countryCode in $languageCode from Firestore...');
+  // ADDED: category parameter to target the correct nested map
+  Future<List<NewsItem>> fetchNewsItems(String countryCode, String languageCode, String category) async {
+    print('Fetching news for $countryCode in $languageCode [$category] from Firestore...');
 
     try {
       // 1. Query the 'news_summaries' collection
@@ -115,21 +94,24 @@ class FirestoreFunctions {
 
       // 4. Extract the data from the single result
       final docData = snapshot.docs.first.data() as Map<String, dynamic>;
-      // CHANGE 1: Get the 'news_data' object
+
+      // Get the 'news_data' object
       final Map<String, dynamic> newsDataObject = docData['news_data'] ?? {};
-      // CHANGE 2: Get the 'news_items' list from the news_data object
-      final List<dynamic> newsDataList = newsDataObject['news_items'] ?? [];
 
+      // UPDATED: Drill down into the specific category map (e.g., 'Headlines', 'Politics')
+      final Map<String, dynamic> categoryObject = newsDataObject[category] ?? {};
 
-      // 5. Map the list of JSON objects (from 'news_stories') to NewsItem objects
+      // UPDATED: Get the 'news_items' list from inside that category object
+      final List<dynamic> newsDataList = categoryObject['news_items'] ?? [];
+
+      // 5. Map the list of JSON objects to NewsItem objects
       final List<NewsItem> newsItems = newsDataList
           .whereType<Map<String, dynamic>>()
-      // CHANGE 3: Use the new list to map
           .map((itemData) => NewsItem.fromFirestore(itemData))
           .toList();
 
       if (kDebugMode) {
-        print('Successfully fetched ${newsItems.length} news items from Firestore.');
+        print('Successfully fetched ${newsItems.length} items for category "$category".');
       }
       return newsItems;
     } catch (e) {

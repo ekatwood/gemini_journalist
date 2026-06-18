@@ -153,7 +153,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
     List<NewsItem> rawNewsItems = [];
     try {
       // Fetch raw data using preferences
-      rawNewsItems = await firestoreFunctions.fetchNewsItems(countryCode, languageCode);
+      rawNewsItems = await firestoreFunctions.fetchNewsItems(countryCode, languageCode, _selectedCategory);
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to fetch raw news: ${e.toString()}';
@@ -309,7 +309,7 @@ class _NewsHomePageState extends State<NewsHomePage> {
                         setState(() {
                           _selectedCategory = category;
                         });
-                        // TODO: query and display news items for this category
+                        _fetchNews();
                       }
                     },
                   )
