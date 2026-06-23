@@ -179,22 +179,27 @@ class _NewsHomePageState extends State<NewsHomePage> {
     final currentCountry = authProvider.selectedCountryCode;
     final currentLanguage = authProvider.selectedLanguageCode;
 
-    // *** NEW LOGIC STARTS HERE ***
-    // 1. Get the list of language names for the current country
-    final countryLangNames = countryLanguages[currentCountry] ?? [];
+    // 1. Get the allowed language codes for the current country (default to English if not found)
+    final List<String> availableLanguageCodes = countryLanguages[currentCountry] ?? ['en'];
 
-    // 2. Convert these names into a Set of their language codes for efficient lookup
-    final Set<String> countryLanguageCodes = countryLangNames
-        .map((name) {
-      // Look up the code using the reverse map from languages_dropdown.dart
-      // Note: You may need to update the import for _languageNameToCodeMap
-      // or create a public helper function in languages_dropdown.dart to access it.
-      // For simplicity, we'll assume we can access it directly after updating imports/exports.
-      return languageNameToCodeMap[name];
-    })
-        .whereType<String>() // Filter out nulls if a name isn't found
-        .toSet();
-    // *** NEW LOGIC ENDS HERE ***
+    // 2. Determine active language: if the current context language isn't supported by this country, fall back to the first
+    final String activeLanguage = availableLanguageCodes.contains(currentLanguage)
+        ? currentLanguage
+        : availableLanguageCodes.first;
+
+    // 3. Keep provider state synchronized safely if an automatic fallback occurs
+    if (activeLanguage != currentLanguage) {
+      Future.microtask(() {
+        authProvider.setLanguagePreference(activeLanguage);
+        _fetchNews();
+      });
+    }
+
+    // 4. Transform the supported codes into map entries using languageCodeToNameMap for UI display
+    final Map<String, String> filteredLanguageItems = {
+      for (var code in availableLanguageCodes)
+        code: languageCodeToNameMap[code] ?? code
+    };
 
     return Scaffold(
       appBar: AppBar(
@@ -246,8 +251,6 @@ class _NewsHomePageState extends State<NewsHomePage> {
                       _fetchNews(); // Re-fetch data on preference change
                     }
                   },
-                  // Pass an empty set for the country dropdown
-                  {},
                 ),
                 const SizedBox(width: 16),
 
@@ -255,12 +258,8 @@ class _NewsHomePageState extends State<NewsHomePage> {
                 _buildDropdown(
                   context,
                   'Translate To',
-                  currentLanguage,
-                  Map<String, String>.fromIterable(
-                    allLanguages, // <--- Change this
-                    key: (language) => language.code,
-                    value: (language) => language.name,
-                  ),
+                  activeLanguage,
+                  filteredLanguageItems,
                       (String? newValue) {
                     if (newValue != null) {
                       // TODO: translate if it is not already in db
@@ -268,8 +267,6 @@ class _NewsHomePageState extends State<NewsHomePage> {
                       _fetchNews(); // Re-fetch data on preference change
                     }
                   },
-                  // Pass the calculated set of highlighted codes!
-                  countryLanguageCodes,
                 ),
               ],
             ),
@@ -290,29 +287,29 @@ class _NewsHomePageState extends State<NewsHomePage> {
               ].map((category) {
                 final isSelected = _selectedCategory == category;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: FilterChip(
-                    label: Text(category),
-                    selected: isSelected,
-                    showCheckmark: false,
-                    // Force the background to use your primary ink color when selected
-                    selectedColor: Theme.of(context).colorScheme.primary,
-                    // Update the text color dynamically based on selection state
-                    labelStyle: TextStyle(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.background // Light text when selected
-                          : Theme.of(context).colorScheme.onBackground, // Dark text when unselected
-                      //fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (bool selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                        _fetchNews();
-                      }
-                    },
-                  )
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: FilterChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      showCheckmark: false,
+                      // Force the background to use your primary ink color when selected
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      // Update the text color dynamically based on selection state
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.background // Light text when selected
+                            : Theme.of(context).colorScheme.onBackground, // Dark text when unselected
+                        //fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      onSelected: (bool selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                          _fetchNews();
+                        }
+                      },
+                    )
                 );
               }).toList(),
             ),
@@ -336,73 +333,18 @@ class _NewsHomePageState extends State<NewsHomePage> {
       String currentValue,
       Map<String, String> items,
       void Function(String?) onChanged,
-      // NEW ARGUMENT: A set of codes that should be highlighted/bolded.
-      Set<String> highlightCodes,
       ) {
-
-    // 1. Separate the items into two lists, maintaining the original order
-    final List<MapEntry<String, String>> highlightedItems = [];
-    final List<MapEntry<String, String>> remainingItems = [];
-
-    // Iterate over the items in their original order (from the passed Map)
-    items.entries.forEach((entry) {
-      if (highlightCodes.contains(entry.key)) {
-        highlightedItems.add(entry);
-      } else {
-        remainingItems.add(entry);
-      }
-    });
-
-    // 2. Build the final list of DropdownMenuItem widgets
-    final List<DropdownMenuItem<String>> menuItems = [];
-
-    // Add Highlighted (Country-Specific) Languages (in original order)
-    menuItems.addAll(highlightedItems.map((entry) {
-      return DropdownMenuItem<String>(
-        value: entry.key,
-        child: Text(
-          entry.value,
-          style: null, //const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      );
-    }));
-
-    // Add the Divider if there are both highlighted languages AND other languages
-    if (highlightedItems.isNotEmpty && remainingItems.isNotEmpty) {
-      // A non-selectable DropdownMenuItem containing a Divider
-      menuItems.add(
-        const DropdownMenuItem<String>(
-          value: null, // Set value to null to prevent selection
-          enabled: false, // Crucial: Prevents interaction
-          child: Divider(
-            height: 1, // Minimize space
-            thickness: 1,
-          ),
-        ),
-      );
-    }
-
-    // Add Remaining Languages (in original order)
-    menuItems.addAll(remainingItems.map((entry) {
-      // Note: We don't need to check for highlighting again here.
-      return DropdownMenuItem<String>(
-        value: entry.key,
-        child: Text(
-          entry.value,
-          style: null, // Normal style
-        ),
-      );
-    }));
-
-
-    // 3. Return the final DropdownButton
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: currentValue,
         onChanged: onChanged,
         hint: Text(label),
-        // Use the newly constructed list of items
-        items: menuItems,
+        items: items.entries.map((entry) {
+          return DropdownMenuItem<String>(
+            value: entry.key,
+            child: Text(entry.value),
+          );
+        }).toList(),
       ),
     );
   }
