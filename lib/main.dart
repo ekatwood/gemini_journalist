@@ -171,6 +171,35 @@ class _NewsHomePageState extends State<NewsHomePage> {
     });
   }
 
+  Widget _buildFooterText() {
+    return Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Powered by ',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          InkWell(
+            onTap: () async {
+              final Uri url = Uri.parse('https://deepmind.google/models/gemini/');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.platformDefault);
+              }
+            },
+            child: const Text(
+              'Gemini',
+              style: TextStyle(
+                color: Colors.blue, // Standard hyperlink blue color
+                decoration: TextDecoration.none, // No underline
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<ap.AuthProvider>(context);
@@ -361,22 +390,46 @@ class _NewsHomePageState extends State<NewsHomePage> {
       );
     }
 
-    if (_newsItems.isEmpty) {
-      return const Center(child: Text('No news items found for this selection.'));
-    }
+    // Use a CustomScrollView to unify empty states, short lists, and long lists
+    return CustomScrollView(
+      slivers: [
+        if (_newsItems.isEmpty)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.only(top: 32.0),
+              child: Center(child: Text('No news items found for this selection.')),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                final item = _newsItems[index];
+                return NewsItemCard(
+                  number: index + 1,
+                  title: item.title,
+                  summary: item.summary,
+                  sources: item.sources,
+                );
+              },
+              childCount: _newsItems.length,
+            ),
+          ),
 
-    // Display the list of news items
-    return ListView.builder(
-      itemCount: _newsItems.length,
-      itemBuilder: (context, index) {
-        final item = _newsItems[index];
-        return NewsItemCard(
-          number: index + 1,
-          title: item.title,
-          summary: item.summary,
-          sources: item.sources,
-        );
-      },
+        // This sliver dynamically fills up the rest of the screen viewport
+        SliverFillRemaining(
+          hasScrollBody: false, // Ensures content inside doesn't scroll independently
+          child: Padding(
+            padding: const EdgeInsets.only(top: 120.0, bottom: 40.0), // 120px above if content pushes it down, 40px bottom anchor
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end, // Anchors the footer to the bottom of the remaining space
+              children: [
+                _buildFooterText(),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
